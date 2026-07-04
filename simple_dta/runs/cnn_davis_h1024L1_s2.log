@@ -1,6 +1,0 @@
-=== cnn_davis_h1024L1_s2 | device=cpu | pool=max | head_dim=1024 | head_layers=1 | seed=7 ===
-Trainable parameters: 358,145
-[cnn_davis_h1024L1_s2] epoch  10 | 138.8s | train_mse 0.5168 | test MSE 0.5015 CI 0.8130 rm2 0.3803 Pearson 0.6172
-[cnn_davis_h1024L1_s2] epoch  20 | 137.6s | train_mse 0.4568 | test MSE 0.4501 CI 0.8293 rm2 0.4453 Pearson 0.6701
-[cnn_davis_h1024L1_s2] epoch  30 | 139.0s | train_mse 0.3458 | test MSE 0.3560 CI 0.8541 rm2 0.5579 Pearson 0.7517
-[cnn_davis_h1024L1_s2] epoch  40 | 129.8s | train_mse 0.2903 | test MSE 0.3586 CI 0.8602 rm2 0.5920 Pearson 0.7810

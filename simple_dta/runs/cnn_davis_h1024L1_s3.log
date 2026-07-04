@@ -1,2 +1,0 @@
-=== cnn_davis_h1024L1_s3 | device=cpu | pool=max | head_dim=1024 | head_layers=1 | seed=13 ===
-Trainable parameters: 358,145

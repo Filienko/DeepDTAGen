@@ -1,0 +1,8 @@
+# Small-GCN Davis screen: input-feat {tiny=4, small=12} x gcn-hidden {24,32},
+# 3 GCN layers (like DeepDTAGen), protein embed=32, head at baseline (isolate GCN).
+# Single seed 4221 to screen; seed-average the winner afterward.
+# Format: <logtag>|<train.py args>
+gnn_davis_f4d24|--model gnn --dataset davis --epochs 100 --eval-interval 10 --node-feat tiny  --gcn-dim 24 --gcn-layers 3 --embed-dim 32 --seed 4221 --tag-suffix _f4d24
+gnn_davis_f4d32|--model gnn --dataset davis --epochs 100 --eval-interval 10 --node-feat tiny  --gcn-dim 32 --gcn-layers 3 --embed-dim 32 --seed 4221 --tag-suffix _f4d32
+gnn_davis_f12d24|--model gnn --dataset davis --epochs 100 --eval-interval 10 --node-feat small --gcn-dim 24 --gcn-layers 3 --embed-dim 32 --seed 4221 --tag-suffix _f12d24
+gnn_davis_f12d32|--model gnn --dataset davis --epochs 100 --eval-interval 10 --node-feat small --gcn-dim 32 --gcn-layers 3 --embed-dim 32 --seed 4221 --tag-suffix _f12d32

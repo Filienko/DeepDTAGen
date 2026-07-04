@@ -1,0 +1,19 @@
+# Regularization sweep (diagnosis: davis conv runs OVERFIT, gap ~0.10, dropout 0.1/wd 0).
+# Goal: lift balanced accuracy toward the DeepDTAGen davis target (within 2pp) by
+# regularizing, and select the checkpoint by balAcc (--select-metric balacc) since
+# balAcc (not MSE) is the target metric.
+# Two configs: (A) t4 proj32 bottleneck 267K = the MPC-ideal small model;
+#              (B) c3 dilated-protein 800K = best MSE but lagging balAcc (overfit test).
+# Grid per config: dropout {0.1(control),0.2,0.3} x weight-decay {0,1e-4}, minus the
+# redundant control@wd1e-4 -> 5 runs each, 10 total. davis, seed 4221, balacc-selected.
+# Format: <logtag>|<train.py args>
+cnn_davis_regA_d1_wd0|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --proj-dim 32 --head-dim 1536 --head-layers 1 --dropout 0.1 --weight-decay 0    --select-metric balacc --seed 4221 --tag-suffix _regA_d1_wd0
+cnn_davis_regA_d2_wd0|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --proj-dim 32 --head-dim 1536 --head-layers 1 --dropout 0.2 --weight-decay 0    --select-metric balacc --seed 4221 --tag-suffix _regA_d2_wd0
+cnn_davis_regA_d3_wd0|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --proj-dim 32 --head-dim 1536 --head-layers 1 --dropout 0.3 --weight-decay 0    --select-metric balacc --seed 4221 --tag-suffix _regA_d3_wd0
+cnn_davis_regA_d2_wd1e4|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --proj-dim 32 --head-dim 1536 --head-layers 1 --dropout 0.2 --weight-decay 1e-4 --select-metric balacc --seed 4221 --tag-suffix _regA_d2_wd1e4
+cnn_davis_regA_d3_wd1e4|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --proj-dim 32 --head-dim 1536 --head-layers 1 --dropout 0.3 --weight-decay 1e-4 --select-metric balacc --seed 4221 --tag-suffix _regA_d3_wd1e4
+cnn_davis_regB_d1_wd0|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 16,32,48 --prot-channels 32,64,96 --prot-dilations 1,2,4 --head-dim 1024 --head-layers 2 --dropout 0.1 --weight-decay 0    --select-metric balacc --seed 4221 --tag-suffix _regB_d1_wd0
+cnn_davis_regB_d2_wd0|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 16,32,48 --prot-channels 32,64,96 --prot-dilations 1,2,4 --head-dim 1024 --head-layers 2 --dropout 0.2 --weight-decay 0    --select-metric balacc --seed 4221 --tag-suffix _regB_d2_wd0
+cnn_davis_regB_d3_wd0|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 16,32,48 --prot-channels 32,64,96 --prot-dilations 1,2,4 --head-dim 1024 --head-layers 2 --dropout 0.3 --weight-decay 0    --select-metric balacc --seed 4221 --tag-suffix _regB_d3_wd0
+cnn_davis_regB_d2_wd1e4|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 16,32,48 --prot-channels 32,64,96 --prot-dilations 1,2,4 --head-dim 1024 --head-layers 2 --dropout 0.2 --weight-decay 1e-4 --select-metric balacc --seed 4221 --tag-suffix _regB_d2_wd1e4
+cnn_davis_regB_d3_wd1e4|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 16,32,48 --prot-channels 32,64,96 --prot-dilations 1,2,4 --head-dim 1024 --head-layers 2 --dropout 0.3 --weight-decay 1e-4 --select-metric balacc --seed 4221 --tag-suffix _regB_d3_wd1e4

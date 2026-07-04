@@ -1,0 +1,7 @@
+# Follow-up: seed-confirm the winner (small-12/gcn-32/L3) + probe the gcn-dim floor.
+# All: davis, small-12 input, 3 GCN layers, embed-32, baseline head.
+# Format: <logtag>|<train.py args>
+gnn_davis_f12d32_s2|--model gnn --dataset davis --epochs 100 --eval-interval 10 --node-feat small --gcn-dim 32 --gcn-layers 3 --embed-dim 32 --seed 7  --tag-suffix _f12d32_s2
+gnn_davis_f12d32_s3|--model gnn --dataset davis --epochs 100 --eval-interval 10 --node-feat small --gcn-dim 32 --gcn-layers 3 --embed-dim 32 --seed 13 --tag-suffix _f12d32_s3
+gnn_davis_f12d16|--model gnn --dataset davis --epochs 100 --eval-interval 10 --node-feat small --gcn-dim 16 --gcn-layers 3 --embed-dim 32 --seed 4221 --tag-suffix _f12d16
+gnn_davis_f12d12|--model gnn --dataset davis --epochs 100 --eval-interval 10 --node-feat small --gcn-dim 12 --gcn-layers 3 --embed-dim 32 --seed 4221 --tag-suffix _f12d12

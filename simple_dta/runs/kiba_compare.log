@@ -1,7 +1,0 @@
-START Mon Jun 29 06:53:32 AM UTC 2026 | dataset=kiba | epochs=100 | pid=3974073 | OMP=24
-######## CNN kiba (100 epochs) ########
-CNN done Mon Jun 29 03:10:11 PM UTC 2026
-######## GNN kiba (100 epochs) ########
-Terminated
-GNN done Mon Jun 29 06:35:44 PM UTC 2026
-ALL DONE Mon Jun 29 06:35:44 PM UTC 2026

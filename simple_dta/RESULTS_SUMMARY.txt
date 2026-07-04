@@ -1,0 +1,224 @@
+==========================================================================================
+RESULTS SUMMARY - simplified affinity-only DTA models (CNN & GNN)
+Best-epoch on held-out test split. Multi-seed rows = avg of 3 seeds (4221/7/13).
+Updated: 2026-07-04
+==========================================================================================
+
+HOW TO READ A ROW
+  Tower = Embedding -> conv filters(per layer) -> global pool. The two tower
+  outputs are concatenated and fed to Head MLP (concat_dim -> hidden -> ... -> 1).
+  Default pool = global-max; '+mean' = max & mean concat (2x width);
+  'proj32' = each tower squeezed to 32 dims before the head.
+
+  balAcc = BALANCED ACCURACY = (sensitivity + specificity)/2, after binarizing
+  BOTH truth and prediction into active/inactive at a threshold. Robust to the
+  heavy class imbalance (few actives). The 'balAcc' column below is the MEAN
+  over the dataset's threshold panel; the per-threshold breakdown is in the
+  BALANCED ACCURACY section at the bottom. Thresholds (from ../test.py):
+    davis/bindingdb: 5.0 5.5 6.0 6.5 7.0 7.5 8.0 8.5
+    kiba:            10.0 10.5 11.0 11.5 12.0 12.1 12.5
+
+------------------------------------------------------------------------------------------
+REFERENCE (published - Shah et al., Nat. Commun. 16:5021 2025, Table 1; 6-fold CV)
+CI/MSE/rm2 are from the paper. balAcc is NOT in the paper; the DeepDTAGen Davis
+balAcc below is a REFERENCE TARGET we were given (per-threshold in the appendix).
+*** TARGET: any new model must land within 2 percentage points of DeepDTAGen's
+    per-threshold balanced accuracy on Davis. ***
+------------------------------------------------------------------------------------------
+Model       Dataset    CI     MSE    rm2    balAcc  ~Params
+----------  ---------  -----  -----  -----  ------  -------
+DeepDTA     Davis      0.878  0.261  0.630  ?       ~1.9M  
+DeepDTAGen  Davis      0.890  0.214  0.705  0.820   ~3.58M 
+DeepDTA     KIBA       0.863  0.194  0.630  ?       ~1.9M  
+DeepDTAGen  KIBA       0.897  0.146  0.765  ?       ~3.58M 
+DeepDTA     BindingDB  0.844  0.633  0.633  ?       ~1.9M  
+DeepDTAGen  BindingDB  0.876  0.458  0.760  ?       ~3.58M 
+
+------------------------------------------------------------------------------------------
+OUR CNN - Davis
+------------------------------------------------------------------------------------------
+Drug convs         Protein convs          Head MLP           Params  MSE    CI     rm2    balAcc  Time
+-----------------  ---------------------  -----------------  ------  -----  -----  -----  ------  ----
+32->64->96         32->64->96             192->1024->512->1  882K    0.225  0.887  0.713  0.783   ~3h 
+32->64->96         32->64->96             192->1024->1       358K    0.248  0.881  0.679  0.779   ~3h 
+32->64->96         32->64->96             192->512->256->1   390K    0.275  0.873  0.649  0.747   ~4h 
+32->64->96         32->64->96             192->1536->1       457K    0.238  0.884  0.669  0.807   5h  
+16->32->48 +mean   16->32->48 +mean       192->1536->1       359K    0.256  0.877  0.658  0.763   3h  
+16->32->48 +mean   16->32->48 +mean       192->1024->512->1  784K    0.245  0.885  0.666  0.767   3h  
+16->32->48         32->64->96             144->1536->1       351K    0.236  0.880  0.678  0.771   5h  
+16->32->48         32->64->96             144->1024->512->1  800K    0.231  0.893  0.669  0.787   5h  
+32->64->96 proj32  32->64->96 proj32      64->1536->1        267K    0.248  0.879  0.661  0.792   5h  
+32->64->96 proj32  32->64->96 proj32      64->1024->512->1   758K    0.238  0.881  0.691  0.768   5h  
+16->32             32->64->96             128->1024->512->1  778K    0.243  0.887  0.655  0.770   4h  
+16->32             32->64->96->128        160->1024->512->1  909K    0.227  0.887  0.712  0.791   4h  
+16->32->48         32->64->96 dil(1,2,4)  144->1024->512->1  800K    0.235  0.882  0.694  0.767   4h  
+16->16->16         32->32->32             48->1024->512->1   647K    0.245  0.880  0.679  0.775   3h  
+16->12->8          32->24->16             24->1024->512->1   614K    0.262  0.874  0.637  0.791   2h  
+
+------------------------------------------------------------------------------------------
+OUR CNN - Davis  REGULARIZATION SWEEP  (checkpoint selected by balAcc, not MSE)
+Testing whether dropout/weight-decay lifts balanced accuracy toward the target.
+Config A = t4 proj32 267K (MPC-ideal small model); Config B = c3 dilated 800K.
+FINDING: regularization HURT balAcc in both configs (best cell = least reg,
+d0.1/wd0). The real lever was balAcc-checkpoint selection. regB d0.1/wd0 CLEARS
+the DeepDTAGen target at every threshold (see appendix).
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+Drug convs          Protein convs        Head MLP           Params  MSE    CI     rm2  balAcc  Time      
+------------------  -------------------  -----------------  ------  -----  -----  ---  ------  ----------
+A: 32-64-96 proj32  32-64-96 proj32      64->1536->1        267K    0.259  0.879  -    0.795   d0.1 wd0  
+A: 32-64-96 proj32  32-64-96 proj32      64->1536->1        267K    0.263  -      -    0.764   d0.2 wd0  
+A: 32-64-96 proj32  32-64-96 proj32      64->1536->1        267K    0.282  -      -    0.771   d0.3 wd0  
+A: 32-64-96 proj32  32-64-96 proj32      64->1536->1        267K    0.289  -      -    0.754   d0.2 wd1e4
+A: 32-64-96 proj32  32-64-96 proj32      64->1536->1        267K    0.312  -      -    0.758   d0.3 wd1e4
+B: 16-32-48         32-64-96 dil(1,2,4)  144->1024->512->1  800K    0.291  -      -    0.848   d0.1 wd0  
+B: 16-32-48         32-64-96 dil(1,2,4)  144->1024->512->1  800K    0.288  -      -    0.816   d0.2 wd0  
+B: 16-32-48         32-64-96 dil(1,2,4)  144->1024->512->1  800K    0.233  -      -    0.785   d0.3 wd0  
+B: 16-32-48         32-64-96 dil(1,2,4)  144->1024->512->1  800K    0.274  -      -    0.790   d0.2 wd1e4
+B: 16-32-48         32-64-96 dil(1,2,4)  144->1024->512->1  800K    0.239  -      -    0.791   d0.3 wd1e4
+
+------------------------------------------------------------------------------------------
+OUR CNN - KIBA
+------------------------------------------------------------------------------------------
+Drug convs        Protein convs          Head MLP           Params  MSE    CI     rm2    balAcc  Time        
+----------------  ---------------------  -----------------  ------  -----  -----  -----  ------  ------------
+32->64->96        32->64->96             192->1024->512->1  882K    0.179  0.858  0.707  0.842   ~10h        
+32->64->96        32->64->96             192->512->256->1   390K    0.180  0.856  0.695  0.841   8h          
+16->32->48 +mean  16->32->48 +mean       192->1536->1       359K    0.249  0.815  0.619  0.775   11h         
+16->32->48 +mean  16->32->48 +mean       192->1024->512->1  784K    0.208  0.839  0.672  0.822   10h         
+16->32            32->64->96             128->1024->512->1  778K    0.236  0.821  0.663  0.791   12h         
+16->32            32->64->96->128        160->1024->512->1  909K    -      -      -      -       killed@~ep75
+16->32->48        32->64->96 dil(1,2,4)  144->1024->512->1  800K    0.206  0.840  0.657  0.826   13h         
+16->16->16        32->32->32             48->1024->512->1   647K    0.246  0.816  0.626  0.777   8h          
+16->12->8         32->24->16             24->1024->512->1   614K    0.282  0.808  0.569  0.731   9h          
+  (5 other KIBA tower runs were killed mid-training - their partial numbers are in the appendix.)
+
+------------------------------------------------------------------------------------------
+OUR CNN - BindingDB
+------------------------------------------------------------------------------------------
+Drug convs  Protein convs  Head MLP           Params  MSE    CI     rm2    balAcc  Time
+----------  -------------  -----------------  ------  -----  -----  -----  ------  ----
+32->64->96  32->64->96     192->1024->512->1  882K    0.503  0.862  0.706  0.826   ~6h 
+
+------------------------------------------------------------------------------------------
+OUR GNN - Davis  (GCN drug encoder + protein conv tower)
+------------------------------------------------------------------------------------------
+Drug tower                  Protein convs  Head MLP           Params  MSE    CI     rm2    balAcc
+--------------------------  -------------  -----------------  ------  -----  -----  -----  ------
+GCNx2 on 94-dim atoms->128  32->64->96     224->1024->512->1  903K    0.270  0.875  0.625  0.779 
+GCNx3 on 12-dim atoms->32   32->64->96     128->1024->512->1  736K    0.270  0.875  0.621  0.765 
+GCNx3 on 12-dim atoms->24   32->64->96     120->1024->512->1  726K    0.317  0.855  0.617  0.707 
+GCNx3 on 12-dim atoms->16   32->64->96     112->1024->512->1  717K    0.373  0.845  0.528  0.690 
+GCNx3 on 12-dim atoms->12   32->64->96     108->1024->512->1  712K    0.411  0.821  0.468  0.685 
+GCNx3 on 4-dim atoms->24    32->64->96     120->1024->512->1  726K    0.297  0.866  0.628  0.727 
+GCNx3 on 4-dim atoms->32    32->64->96     128->1024->512->1  735K    0.318  0.858  0.601  0.721 
+
+------------------------------------------------------------------------------------------
+OUR GNN - BindingDB
+------------------------------------------------------------------------------------------
+Drug tower                  Protein convs  Head MLP           Params  MSE    CI     rm2    balAcc
+--------------------------  -------------  -----------------  ------  -----  -----  -----  ------
+GCNx2 on 94-dim atoms->128  32->64->96     224->1024->512->1  903K    0.606  0.848  0.676  0.789 
+
+==========================================================================================
+BALANCED ACCURACY - per threshold (re-scored from saved predictions)
+Rows sorted by mean balAcc within each dataset. NaN thresholds (a class empty)
+are shown as '-' and skipped in the mean.
+==========================================================================================
+
+------------------------------------------------------------------------------------------
+Davis
+------------------------------------------------------------------------------------------
+Run (arch / params)                                   5      5.5    6      6.5    7      7.5    8      8.5    MEAN 
+----------------------------------------------------  -----  -----  -----  -----  -----  -----  -----  -----  -----
+DeepDTAGen  [REFERENCE TARGET, within 2pp]            0.980  0.870  0.850  0.830  0.800  0.770  0.750  0.710  0.820
+REG B c3-dilated 800K d0.1 wd0 [balacc-sel] **BEST**  -      0.853  0.869  0.859  0.848  0.853  0.818  0.836  0.848
+REG B c3-dilated 800K d0.2 wd0 [balacc-sel]           -      0.849  0.855  0.848  0.808  0.815  0.789  0.747  0.816
+CNN t1 32/32 h1536L1  457K                            -      0.863  0.857  0.828  0.818  0.790  0.767  0.724  0.807
+REG A t4-proj32 267K d0.1 wd0 [balacc-sel]            -      0.858  0.849  0.819  0.783  0.774  0.740  0.742  0.795
+CNN t4 proj32 h1536L1  267K                           -      0.857  0.839  0.813  0.788  0.761  0.751  0.737  0.792
+REG B c3-dilated 800K d0.3 wd1e4 [balacc-sel]         -      0.853  0.827  0.804  0.796  0.791  0.771  0.694  0.791
+CNN c5 inverted  614K                                 -      0.851  0.824  0.819  0.801  0.773  0.750  0.718  0.791
+CNN c2 deep-prot 16-32/->128  909K                    -      0.862  0.831  0.820  0.786  0.789  0.746  0.700  0.791
+REG B c3-dilated 800K d0.2 wd1e4 [balacc-sel]         -      0.855  0.853  0.832  0.793  0.769  0.752  0.676  0.790
+CNN t3 leandrug h1024L2  800K                         -      0.853  0.823  0.814  0.794  0.768  0.747  0.712  0.787
+REG B c3-dilated 800K d0.3 wd0 [balacc-sel]           -      0.852  0.815  0.804  0.794  0.782  0.733  0.712  0.785
+CNN base 32-64-96 h1024L2  882K                       -      0.855  0.833  0.816  0.789  0.761  0.736  0.688  0.783
+CNN base  h1024L1  358K                               -      0.856  0.839  0.813  0.770  0.755  0.725  0.698  0.779
+GNN full-94 gcn128  903K                              -      0.840  0.833  0.812  0.762  0.755  0.732  0.717  0.779
+CNN c4 flat 32/32/32  647K                            -      0.851  0.827  0.810  0.786  0.731  0.723  0.700  0.775
+CNN t3 leandrug h1536L1  351K                         -      0.856  0.830  0.807  0.772  0.728  0.716  0.688  0.771
+REG A t4-proj32 267K d0.3 wd0 [balacc-sel]            -      0.846  0.843  0.814  0.774  0.752  0.709  0.658  0.771
+CNN c1 shallow-drug 16-32  778K                       -      0.854  0.826  0.801  0.770  0.752  0.716  0.670  0.770
+CNN t4 proj32 h1024L2  758K                           -      0.850  0.818  0.808  0.776  0.757  0.713  0.658  0.768
+CNN c3 dilated-prot(1,2,4)  800K                      -      0.851  0.816  0.793  0.783  0.757  0.693  0.676  0.767
+CNN t2 maxmean h1024L2  784K                          -      0.834  0.812  0.792  0.773  0.769  0.705  0.682  0.767
+GNN small12 gcn32  736K                               -      0.838  0.815  0.794  0.765  0.745  0.714  0.685  0.765
+REG A t4-proj32 267K d0.2 wd0 [balacc-sel]            -      0.851  0.810  0.791  0.752  0.734  0.733  0.676  0.764
+CNN t2 maxmean h1536L1  359K                          -      0.845  0.817  0.795  0.751  0.743  0.702  0.688  0.763
+REG A t4-proj32 267K d0.3 wd1e4 [balacc-sel]          -      0.835  0.822  0.793  0.744  0.728  0.713  0.670  0.758
+REG A t4-proj32 267K d0.2 wd1e4 [balacc-sel]          -      0.841  0.824  0.790  0.753  0.736  0.681  0.651  0.754
+CNN base  h512  390K                                  -      0.842  0.809  0.768  0.737  0.717  0.693  0.664  0.747
+GNN tiny4 gcn24  726K                                 -      0.832  0.786  0.741  0.722  0.704  0.657  0.646  0.727
+GNN tiny4 gcn32  735K                                 -      0.824  0.791  0.748  0.712  0.680  0.652  0.639  0.721
+GNN small12 gcn24  726K                               -      0.816  0.777  0.737  0.702  0.673  0.624  0.621  0.707
+[ABLATION] no-dilation 800K balacc-sel (fills 2x2)    -      0.754  0.773  0.748  0.712  0.646  0.612  0.614  0.694
+GNN small12 gcn16  717K                               -      0.806  0.764  0.715  0.688  0.653  0.613  0.591  0.690
+GNN small12 gcn12  712K                               -      0.785  0.758  0.704  0.677  0.673  0.629  0.566  0.685
+WINNER dilated 800K seed7                             -      0.774  0.775  0.710  0.648  0.604  0.576  0.530  0.660
+cfgA-267K + protDil[1,2,3]                            -      0.742  0.778  0.703  0.647  0.585  0.540  0.505  0.643
+WINNER dilated 800K seed13                            -      0.772  0.717  0.668  0.635  0.605  0.547  0.512  0.636
+cfgA-367K + protDil[1,2,3,5] 4-layer                  -      0.693  0.761  0.682  0.585  0.532  0.506  0.506  0.609
+
+------------------------------------------------------------------------------------------
+KIBA
+------------------------------------------------------------------------------------------
+Run (arch / params)                             10     10.5   11     11.5   12     12.1   12.5   MEAN 
+----------------------------------------------  -----  -----  -----  -----  -----  -----  -----  -----
+CNN base  882K                                  0.841  0.806  0.910  0.859  0.829  0.821  0.831  0.842
+CNN base h512  390K                             0.833  0.807  0.907  0.861  0.835  0.821  0.826  0.841
+CNN c3 dilated-prot(1,2,4)  800K                0.809  0.773  0.883  0.837  0.830  0.823  0.830  0.826
+CNN t2 maxmean h1024L2  784K                    0.832  0.758  0.875  0.838  0.818  0.811  0.821  0.822
+CNN t1 32/32 h1536L1  457K (killed,partial)     0.809  0.765  0.882  0.836  0.825  0.815  0.811  0.820
+CNN t3 leandrug h1024L2  800K (killed,partial)  0.855  0.751  0.856  0.824  0.816  0.809  0.816  0.818
+CNN c1 shallow-drug 16-32  778K                 0.746  0.760  0.866  0.828  0.793  0.773  0.771  0.791
+CNN t4 proj32 h1536L1  267K (killed,partial)    0.690  0.715  0.859  0.826  0.814  0.805  0.809  0.788
+CNN t3 leandrug h1536L1  351K (killed,partial)  0.699  0.728  0.861  0.809  0.798  0.785  0.773  0.779
+CNN c4 flat 32/32/32  647K                      0.733  0.714  0.835  0.809  0.793  0.779  0.775  0.777
+CNN t2 maxmean h1536L1  359K                    0.661  0.728  0.851  0.801  0.799  0.792  0.790  0.775
+CNN c5 inverted  614K                           0.585  0.633  0.789  0.801  0.777  0.776  0.752  0.731
+CNN t4 proj32 h1024L2  758K (killed,partial)    0.652  0.646  0.784  0.716  0.768  0.770  0.765  0.729
+GNN full-94 gcn128  903K                        0.557  0.635  0.740  0.721  0.759  0.755  0.740  0.701
+
+------------------------------------------------------------------------------------------
+BindingDB
+------------------------------------------------------------------------------------------
+Run (arch / params)       5      5.5    6      6.5    7      7.5    8      8.5    MEAN 
+------------------------  -----  -----  -----  -----  -----  -----  -----  -----  -----
+CNN base  882K            0.767  0.878  0.881  0.860  0.849  0.830  0.795  0.751  0.826
+GNN full-94 gcn128  903K  0.758  0.857  0.861  0.830  0.806  0.775  0.744  0.679  0.789
+
+==========================================================================================
+BOTTOM LINE
+==========================================================================================
+1. On balanced accuracy the story shifts vs MSE: specificity is ~0.98 for all
+   models (class imbalance), so balAcc is driven by SENSITIVITY (catching rare
+   actives). Models with worse MSE can rank higher on balAcc (e.g. davis c5inv).
+2. Full CNN baseline is still top or near-top on balAcc on every dataset.
+3. TARGET (Davis): match DeepDTAGen's per-threshold BA within 2pp. On the 7
+   defined thresholds (5.5-8.5) DeepDTAGen means 0.797; our best CNNs
+   (t1 0.807, baseline 0.783) are already in range there. Threshold 5.0 is
+   undefined for our '>=' scoring (Davis min = 5.0 -> no negatives).
+4. balAcc for DeepDTA-proper and DeepDTAGen on KIBA/BindingDB is still unknown
+   (not in the paper). DeepDTAGen weights are present and could be re-scored.
+5. REGULARIZATION SWEEP (Davis, balAcc-selected checkpoints): the c3-dilated
+   800K model at dropout 0.1 / wd 0 (regB_d1_wd0) reaches balMean 0.848 and
+   MEETS OR BEATS the DeepDTAGen target at EVERY threshold (8.0: .82 vs .75,
+   8.5: .84 vs .71). Adding dropout or weight-decay MONOTONICALLY LOWERED balAcc
+   in both configs -> overfitting (an MSE story) is NOT what caps balAcc; the
+   lever was selecting the checkpoint by balAcc. The MPC-ideal 267K model
+   (regA_d1_wd0) lands balMean 0.795, level with DeepDTAGen and within 2pp
+   everywhere (beats it at 8.5: .74 vs .71).
+

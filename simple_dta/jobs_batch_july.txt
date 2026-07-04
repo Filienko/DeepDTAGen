@@ -1,0 +1,51 @@
+# =============================================================================
+# BATCH launched 2026-07-04 (user away ~2 days). ALL Davis, balAcc-selected.
+# Full rationale + the critical 2x2 ablation logic: EXPERIMENTS.md section 8.
+# Every run: 100 epochs, eval every 5, dropout 0.1, wd 0 (reg ruled out already),
+# checkpoint chosen by balanced accuracy (--select-metric balacc).
+# Format: <logtag>|<train.py args>.  Results auto-fold into RESULTS_SUMMARY.txt
+# on `python3 gen_results.py` (tags already registered there).
+# Order = most important first (A1 ablation, then winner-seed confirm, then cfgA+dilation).
+# =============================================================================
+
+# --- A. THE CRITICAL ABLATION: dilation vs balAcc-selection --------------------
+# Fills the missing 2x2 cell: same arch as the winning dilated model (regB, 800K)
+# but with NO dilation, balAcc-selected. Lets us finally attribute the 0.848 jump
+# to dilation vs. to checkpoint-selection. WITHOUT THIS RUN WE CANNOT TELL. See §8.
+cnn_davis_ablate_noDil_balacc|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 16,32,48 --prot-channels 32,64,96 --head-dim 1024 --head-layers 2 --select-metric balacc --seed 4221 --tag-suffix _ablate_noDil_balacc
+
+# --- D. Confirm the winner (dilated 800K, balAcc=0.848 @seed4221) on 2 more seeds -
+cnn_davis_winner_regB_s7|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 16,32,48 --prot-channels 32,64,96 --prot-dilations 1,2,4 --head-dim 1024 --head-layers 2 --select-metric balacc --seed 7 --tag-suffix _winner_regB_s7
+cnn_davis_winner_regB_s13|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 16,32,48 --prot-channels 32,64,96 --prot-dilations 1,2,4 --head-dim 1024 --head-layers 2 --select-metric balacc --seed 13 --tag-suffix _winner_regB_s13
+
+# --- B. Combine dilation with the SMALL Config A (267K, MPC-ideal). Dilation is FREE
+#        (0 params). Tests whether the dilation benefit transfers to the small model.
+#        B1 = coprime [1,2,3] (avoids the gridding that our [1,2,4] can cause).
+#        B2/B3 add a 4th protein conv layer for the 4-length dilation schedules.
+cnn_davis_cfgA_protDil123|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --proj-dim 32 --head-dim 1536 --head-layers 1 --prot-dilations 1,2,3 --select-metric balacc --seed 4221 --tag-suffix _cfgA_protDil123
+cnn_davis_cfgA_protDil1235|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --proj-dim 32 --head-dim 1536 --head-layers 1 --prot-channels 32,64,96,128 --prot-dilations 1,2,3,5 --select-metric balacc --seed 4221 --tag-suffix _cfgA_protDil1235
+cnn_davis_cfgA_protDil123_11|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --proj-dim 32 --head-dim 1536 --head-layers 1 --prot-channels 32,64,96,128 --prot-dilations 1,2,3,11 --select-metric balacc --seed 4221 --tag-suffix _cfgA_protDil123_11
+
+# --- C. Drug-tower dilation [1,2,3] on Config A. C1 = drug-only (isolates drug
+#        dilation); C2 = drug AND protein dilated together.
+cnn_davis_cfgA_drugDil123|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --proj-dim 32 --head-dim 1536 --head-layers 1 --drug-dilations 1,2,3 --select-metric balacc --seed 4221 --tag-suffix _cfgA_drugDil123
+cnn_davis_cfgA_drugprotDil123|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --proj-dim 32 --head-dim 1536 --head-layers 1 --drug-dilations 1,2,3 --prot-dilations 1,2,3 --select-metric balacc --seed 4221 --tag-suffix _cfgA_drugprotDil123
+
+# --- E. Untried combo: single wide head (->1536->1), normal protein 32-64-96,
+#        unusual shrinking drug tower 16->12->8.
+cnn_davis_drug16_12_8_h1536|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 16,12,8 --prot-channels 32,64,96 --head-dim 1536 --head-layers 1 --select-metric balacc --seed 4221 --tag-suffix _drug16_12_8_h1536
+
+# --- G. Mean-pool ablation (mean-pool is cheaper in MPC than max-pool). Clean pair:
+#        identical stable base (32-64-96, head 192->1024->512->1), only pool differs,
+#        both balAcc-selected. G1(max) also serves as the balAcc-selected stable base.
+cnn_davis_stable_pool_mean|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --head-dim 1024 --head-layers 2 --pool mean --select-metric balacc --seed 4221 --tag-suffix _stable_pool_mean
+cnn_davis_stable_pool_max|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --head-dim 1024 --head-layers 2 --pool max --select-metric balacc --seed 4221 --tag-suffix _stable_pool_max
+
+# --- F. Stable-config scans: a couple each of embed-dim, kernel size, channel width.
+#        Base = the pool_max stable run above (32-64-96, head 1024L2, embed128, d4/p8).
+cnn_davis_stable_embed64|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 64 --drug-filters 32 --prot-filters 32 --head-dim 1024 --head-layers 2 --select-metric balacc --seed 4221 --tag-suffix _stable_embed64
+cnn_davis_stable_embed256|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 256 --drug-filters 32 --prot-filters 32 --head-dim 1024 --head-layers 2 --select-metric balacc --seed 4221 --tag-suffix _stable_embed256
+cnn_davis_stable_kern_d6p12|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --head-dim 1024 --head-layers 2 --drug-kernel 6 --prot-kernel 12 --select-metric balacc --seed 4221 --tag-suffix _stable_kern_d6p12
+cnn_davis_stable_kern_d3p6|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-filters 32 --prot-filters 32 --head-dim 1024 --head-layers 2 --drug-kernel 3 --prot-kernel 6 --select-metric balacc --seed 4221 --tag-suffix _stable_kern_d3p6
+cnn_davis_stable_ch48_96_144|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 48,96,144 --prot-channels 48,96,144 --head-dim 1024 --head-layers 2 --select-metric balacc --seed 4221 --tag-suffix _stable_ch48_96_144
+cnn_davis_stable_ch24_48_72|--model cnn --dataset davis --epochs 100 --eval-interval 5 --embed-dim 128 --drug-channels 24,48,72 --prot-channels 24,48,72 --head-dim 1024 --head-layers 2 --select-metric balacc --seed 4221 --tag-suffix _stable_ch24_48_72

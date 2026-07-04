@@ -1,6 +1,0 @@
-START Mon Jun 29 06:53:32 AM UTC 2026 | dataset=bindingdb | epochs=100 | pid=3974074 | OMP=24
-######## CNN bindingdb (100 epochs) ########
-CNN done Mon Jun 29 11:06:43 AM UTC 2026
-######## GNN bindingdb (100 epochs) ########
-GNN done Mon Jun 29 03:29:18 PM UTC 2026
-ALL DONE Mon Jun 29 03:29:18 PM UTC 2026

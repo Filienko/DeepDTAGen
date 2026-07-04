@@ -1,0 +1,20 @@
+# Conv-tower experiments (EXPERIMENTS.md sec.6 #2/#3/#3b). davis+kiba, seed 4221.
+# Head FIXED at H2 deep (1024->512->1) to isolate the conv/tower effect on accuracy.
+# Base is the asymmetric (lean-drug) tower that won the davis sweep.
+# Compare against t3_h2 (asym pyramid, no dilation): davis MSE 0.231 / CI 0.893.
+#   C1 shallowdrug      : drug 2 convs (depth cut on the easy modality)
+#   C2 shallowdrug+deep : drug 2 convs + protein 4 convs (deeper protein for wider RF)
+#   C3 dilated-protein  : protein dilations 1,2,4 -> RF ~50 residues (vs ~22) same params
+#   C4 flat shape       : 32->32->32 / 16->16->16 (no pyramid widening)
+#   C5 inverted shape   : 32->24->16 / 16->12->8 (narrow the top; drug rep is ~11-20 dims)
+# Format: <logtag>|<train.py args>
+cnn_davis_c1sd|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-channels 16,32 --prot-channels 32,64,96 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _c1sd
+cnn_davis_c2sdp|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-channels 16,32 --prot-channels 32,64,96,128 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _c2sdp
+cnn_davis_c3dil|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-channels 16,32,48 --prot-channels 32,64,96 --prot-dilations 1,2,4 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _c3dil
+cnn_davis_c4flat|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-channels 16,16,16 --prot-channels 32,32,32 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _c4flat
+cnn_davis_c5inv|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-channels 16,12,8 --prot-channels 32,24,16 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _c5inv
+cnn_kiba_c1sd|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-channels 16,32 --prot-channels 32,64,96 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _c1sd
+cnn_kiba_c2sdp|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-channels 16,32 --prot-channels 32,64,96,128 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _c2sdp
+cnn_kiba_c3dil|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-channels 16,32,48 --prot-channels 32,64,96 --prot-dilations 1,2,4 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _c3dil
+cnn_kiba_c4flat|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-channels 16,16,16 --prot-channels 32,32,32 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _c4flat
+cnn_kiba_c5inv|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-channels 16,12,8 --prot-channels 32,24,16 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _c5inv

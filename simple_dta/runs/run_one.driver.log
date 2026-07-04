@@ -1,8 +1,0 @@
-START Mon Jun 29 06:37:22 PM UTC 2026 | logtag=cnn_davis_s3 | args: --model cnn --dataset davis --epochs 100 --eval-interval 10 --seed 13 --tag-suffix _s3 | OMP=12
-START Mon Jun 29 06:37:22 PM UTC 2026 | logtag=cnn_davis_s2 | args: --model cnn --dataset davis --epochs 100 --eval-interval 10 --seed 7 --tag-suffix _s2 | OMP=12
-START Mon Jun 29 06:37:22 PM UTC 2026 | logtag=cnn_kiba_h512 | args: --model cnn --dataset kiba --epochs 100 --eval-interval 10 --head-dim 512 --tag-suffix _h512 | OMP=12
-START Mon Jun 29 06:37:22 PM UTC 2026 | logtag=cnn_davis_h512 | args: --model cnn --dataset davis --epochs 100 --eval-interval 10 --head-dim 512 --tag-suffix _h512 | OMP=12
-DONE  Mon Jun 29 10:23:10 PM UTC 2026 | logtag=cnn_davis_h512
-DONE  Mon Jun 29 10:30:45 PM UTC 2026 | logtag=cnn_davis_s3
-DONE  Mon Jun 29 10:33:48 PM UTC 2026 | logtag=cnn_davis_s2
-DONE  Tue Jun 30 02:16:20 AM UTC 2026 | logtag=cnn_kiba_h512

@@ -1,8 +1,0 @@
-=== gnn_kiba | device=cpu | pool=max ===
-Building molecular graphs (in-the-clear encoding stage)...
-Trainable parameters: 902,721
-[gnn_kiba] epoch  10 | 205.9s | train_mse 0.5863 | test MSE 0.4451 CI 0.7319 rm2 0.3407 Pearson 0.5874
-[gnn_kiba] epoch  20 | 201.0s | train_mse 0.5507 | test MSE 0.4243 CI 0.7394 rm2 0.3727 Pearson 0.6128
-[gnn_kiba] epoch  30 | 191.0s | train_mse 0.5013 | test MSE 0.3949 CI 0.7524 rm2 0.4193 Pearson 0.6591
-[gnn_kiba] epoch  40 | 193.7s | train_mse 0.4514 | test MSE 0.3779 CI 0.7734 rm2 0.4883 Pearson 0.7054
-[gnn_kiba] epoch  50 | 193.3s | train_mse 0.4164 | test MSE 0.3348 CI 0.7796 rm2 0.5154 Pearson 0.7250

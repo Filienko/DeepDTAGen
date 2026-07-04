@@ -119,11 +119,37 @@ def atom_features(atom):
         [atom.GetIsAromatic()] + [atom.IsInRing()])
 
 
-NODE_FEATURE_DIM = 94  # length of atom_features() output
+NODE_FEATURE_DIM = 94  # length of atom_features() output (the "full" featurizer)
 
 
-def smile_to_graph(smile):
-    """Return (num_nodes, node_features[N,94], edge_index[2,E]) for a SMILES."""
+# --- compact atom featurizers (for the small-GCN / MPC-friendly variant) ---
+# Edges stay non-featured (GCNConv uses connectivity only); we only shrink the
+# per-node descriptor. "small" = element one-hot + aromatic/ring flags (12 dims);
+# "tiny" = element one-hot only (4 dims).
+def small_atom_features(atom):
+    return np.array(
+        one_of_k_encoding_unk(atom.GetSymbol(),
+            ['C', 'N', 'O', 'S', 'F', 'Cl', 'Br', 'P', 'I']) +  # 9 + unk = 10
+        [atom.GetIsAromatic(), atom.IsInRing()],                # + 2 = 12
+        dtype=np.float32)
+
+
+def tiny_atom_features(atom):
+    return np.array(
+        one_of_k_encoding_unk(atom.GetSymbol(), ['C', 'N', 'O']),  # 3 + unk = 4
+        dtype=np.float32)
+
+
+# name -> (feature_fn, dim). Used by build_graph_dataset / the GNN model.
+FEATURIZERS = {
+    "full": (atom_features, 94),
+    "small": (small_atom_features, 12),
+    "tiny": (tiny_atom_features, 4),
+}
+
+
+def smile_to_graph(smile, feat_fn=atom_features):
+    """Return (num_nodes, node_features[N,D], edge_index[2,E]) for a SMILES."""
     from rdkit import Chem
     mol = Chem.MolFromSmiles(smile)
     if mol is None:
@@ -131,8 +157,9 @@ def smile_to_graph(smile):
     c_size = mol.GetNumAtoms()
     features = []
     for atom in mol.GetAtoms():
-        f = atom_features(atom)
-        features.append(f / f.sum())
+        f = feat_fn(atom).astype(np.float32)
+        s = f.sum()
+        features.append(f / s if s > 0 else f)
     features = np.array(features, dtype=np.float32)
 
     edges = []
@@ -147,9 +174,13 @@ def smile_to_graph(smile):
     return c_size, features, edge_index
 
 
-def build_graph_dataset(dataset, split, max_seq_len=None):
-    """Return a list of torch_geometric Data objects (cached per unique SMILES)."""
+def build_graph_dataset(dataset, split, max_seq_len=None, featurizer="full"):
+    """Return a list of torch_geometric Data objects (cached per unique SMILES).
+
+    `featurizer` selects the per-atom descriptor width: full(94)|small(12)|tiny(4).
+    """
     from torch_geometric.data import Data
+    feat_fn, _ = FEATURIZERS[featurizer]
     max_seq_len = max_seq_len or DEFAULTS[dataset]["max_seq_len"]
     smiles, prots, ys = load_csv(dataset, split)
 
@@ -157,7 +188,7 @@ def build_graph_dataset(dataset, split, max_seq_len=None):
     data_list = []
     for smi, prot, y in zip(smiles, prots, ys):
         if smi not in graph_cache:
-            graph_cache[smi] = smile_to_graph(smi)
+            graph_cache[smi] = smile_to_graph(smi, feat_fn)
         c_size, features, edge_index = graph_cache[smi]
         xt = label_encode(prot, max_seq_len, CHARPROTSET)
         data = Data(

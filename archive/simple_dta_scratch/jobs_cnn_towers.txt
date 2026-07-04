@@ -1,0 +1,19 @@
+# Tower-architecture sweep on the CNN baseline. davis + kiba, single seed 4221.
+# Towers: T1 base(32/32,max) | T2 dualpool(16/16,maxmean) | T3 asym(16/32,max) | T4 bottleneck(32/32,max,proj32)
+# Heads:  H1 = 1536->1 (wide-shallow) | H2 = 1024->512->1 (deep, baseline head)
+# T1+H2 omitted (== existing 3-seed CNN baseline).
+# Format: <logtag>|<train.py args>
+cnn_davis_t1_h1|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --head-dim 1536 --head-layers 1 --seed 4221 --tag-suffix _t1_h1
+cnn_davis_t2_h1|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 16 --prot-filters 16 --pool maxmean --head-dim 1536 --head-layers 1 --seed 4221 --tag-suffix _t2_h1
+cnn_davis_t2_h2|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 16 --prot-filters 16 --pool maxmean --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _t2_h2
+cnn_davis_t3_h1|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 16 --prot-filters 32 --pool max --head-dim 1536 --head-layers 1 --seed 4221 --tag-suffix _t3_h1
+cnn_davis_t3_h2|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 16 --prot-filters 32 --pool max --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _t3_h2
+cnn_davis_t4_h1|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --proj-dim 32 --head-dim 1536 --head-layers 1 --seed 4221 --tag-suffix _t4_h1
+cnn_davis_t4_h2|--model cnn --dataset davis --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --proj-dim 32 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _t4_h2
+cnn_kiba_t1_h1|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --head-dim 1536 --head-layers 1 --seed 4221 --tag-suffix _t1_h1
+cnn_kiba_t2_h1|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 16 --prot-filters 16 --pool maxmean --head-dim 1536 --head-layers 1 --seed 4221 --tag-suffix _t2_h1
+cnn_kiba_t2_h2|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 16 --prot-filters 16 --pool maxmean --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _t2_h2
+cnn_kiba_t3_h1|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 16 --prot-filters 32 --pool max --head-dim 1536 --head-layers 1 --seed 4221 --tag-suffix _t3_h1
+cnn_kiba_t3_h2|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 16 --prot-filters 32 --pool max --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _t3_h2
+cnn_kiba_t4_h1|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --proj-dim 32 --head-dim 1536 --head-layers 1 --seed 4221 --tag-suffix _t4_h1
+cnn_kiba_t4_h2|--model cnn --dataset kiba --epochs 100 --eval-interval 10 --embed-dim 128 --drug-filters 32 --prot-filters 32 --pool max --proj-dim 32 --head-dim 1024 --head-layers 2 --seed 4221 --tag-suffix _t4_h2

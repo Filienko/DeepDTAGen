@@ -26,5 +26,15 @@ logs/
 bindingdb_generated.csv
 *_generated.csv
 
+# simple_dta experiment artifacts: keep the per-run JSON summaries (small, the evidence
+# trail for RESULTS_SUMMARY.txt) but drop the bulky raw dumps. *.pth already ignored above.
+simple_dta/runs/*.log
+simple_dta/runs/*_pred.txt
+simple_dta/runs/*_true.txt
+
+# Editor swap files
+*.swp
+*.swo
+
 # IDE / tools
 .codex
