@@ -51,7 +51,7 @@ def ba(tags, ds):
 w("="*90)
 w("RESULTS SUMMARY - simplified affinity-only DTA models (CNN & GNN)")
 w("Best-epoch on held-out test split. Multi-seed rows = avg of 3 seeds (4221/7/13).")
-w("Updated: 2026-07-04")
+w("Updated: 2026-07-06")
 w("="*90)
 w()
 w("HOW TO READ A ROW")
@@ -251,6 +251,16 @@ appendix("Davis", "davis", [
  ("stable kern drug3/prot6  846K", ["cnn_davis_stable_kern_d3p6"], ""),
  ("stable ch 48-96-144  1.13M", ["cnn_davis_stable_ch48_96_144"], ""),
  ("stable ch 24-48-72  778K", ["cnn_davis_stable_ch24_48_72"], ""),
+ # ---- BATCH 2026-07-06: tower-ablation (Q: how much does each modality matter?) ----
+ ("[FLOOR] mean-affinity baseline (no model, no drug, no protein)", ["mean_baseline_davis"], ""),
+ ("[ABLATION] drug-tower-only (no protein info)  682K seed4221", ["cnn_davis_ablate_drugtower_only"], ""),
+ ("[ABLATION] drug-tower-only  682K (avg seed 4221/7)", ["cnn_davis_ablate_drugtower_only","cnn_davis_ablate_drugtower_only_s7"], ""),
+ ("[ABLATION] protein-tower-only (no drug info)  726K seed4221", ["cnn_davis_ablate_prottower_only"], ""),
+ ("[ABLATION] protein-tower-only  726K (avg seed 4221/7)", ["cnn_davis_ablate_prottower_only","cnn_davis_ablate_prottower_only_s7"], ""),
+ ("[RULE] drug + 5-motif PWM scan (N-TERM ARTIFACT, see EXPERIMENTS 9.4)  687K s4221", ["rule_davis"], ""),
+ ("[RULE] drug + 5-motif PWM scan (N-TERM ARTIFACT)  687K (avg seed 4221/7)", ["rule_davis","rule_davis_s7"], ""),
+ ("[RULE v2] drug + 5-motif PWM scan (artifact-filtered)  687K seed4221", ["rule_davis_v2clean"], ""),
+ ("[RULE v2] drug + 5-motif PWM scan (artifact-filtered)  687K (avg seed 4221/7)", ["rule_davis_v2clean","rule_davis_v2clean_s7"], ""),
  # ---------------------------------------------------------------------------------
  ("GNN full-94 gcn128  903K", ["gnn_davis"], ""),
  ("GNN small12 gcn32  736K", ["gnn_davis_f12d32","gnn_davis_f12d32_s2","gnn_davis_f12d32_s3"], ""),
@@ -304,6 +314,58 @@ w("   in both configs -> overfitting (an MSE story) is NOT what caps balAcc; the
 w("   lever was selecting the checkpoint by balAcc. The MPC-ideal 267K model")
 w("   (regA_d1_wd0) lands balMean 0.795, level with DeepDTAGen and within 2pp")
 w("   everywhere (beats it at 8.5: .74 vs .71).")
+w("6. BATCH 2026-07-04 (17 runs, all balAcc-selected). Key conclusions:")
+w("   a. A1 ABLATION resolves the confound: the missing 2x2 cell (no-dilation +")
+w("      balAcc-sel) = 0.831, vs no-dil+MSE-sel 0.787, dil+MSE-sel 0.767,")
+w("      dil+balAcc-sel 0.848. => balAcc-CHECKPOINT-SELECTION is the real lever")
+w("      (+0.04 to +0.08); DILATION adds only ~+0.017 on top (and HURT under")
+w("      MSE-sel). The 0.848 winner was mostly selection, not dilation.")
+w("   b. WINNER across seeds is noisy: 0.848(4221)/0.804(s7)/0.823(s13) => the")
+w("      true value is ~0.82 +/- 0.02, not a reliable 0.848. Still within target.")
+w("   c. POOLING: same stable config, MAX=0.841 vs MEAN=0.781 (-6pp). Mean pool")
+w("      is cheaper in MPC but costs real balAcc on Davis -- a genuine tradeoff.")
+w("   d. Config-A (267-367K) + dilation (coprime [1,2,3]/[1,2,3,5]/[1,2,3,11],")
+w("      drug and/or protein tower) all land ~0.77-0.79; dilation did NOT lift")
+w("      the small model, and the coprime variants were within noise of each other.")
+w("   e. Best of batch = stable 882K pool=MAX 0.841 (essentially ties the winner);")
+w("      stable embed256 0.834; drug16-12-8 h1536 282K 0.827 (tiny but MSE 0.326).")
+w("7. TOWER-ABLATION + PROTEIN-TOWER INTERPRETABILITY (2026-07-06). Full writeup:")
+w("   EXPERIMENTS.md section 9. Answers: how important is each modality alone, and")
+w("   can the learned protein CNN be replaced by a hand-coded rule?")
+w("   a. MODALITY ABLATION (retrain a single tower from scratch, not just zero an")
+w("      input): drug-tower-only (no protein at all) = balAcc 0.586, MSE ~0.69 --")
+w("      clears the mean-affinity floor (0.500/0.80) by a lot but nowhere near the")
+w("      full model (0.841/0.267). protein-tower-only (no drug at all) = balAcc")
+w("      0.539, MSE ~0.75 -- barely above the floor. On Davis, DRUG IDENTITY alone")
+w("      carries far more signal than PROTEIN IDENTITY alone.")
+w("   b. INTERPRETABILITY: single-channel knockout on the protein tower's final")
+w("      (96-channel) conv layer, then motif extraction via argmax-position under")
+w("      max-pool + the exact receptive-field formula RF=(kernel-1)*sum(dilations)+1.")
+w("      The top-ranked channels on TWO different checkpoints (plain 882K and")
+w("      [1,2,4]-dilated 800K) independently rediscovered real, textbook kinase")
+w("      catalytic motifs (HRD box, DFG box, APE motif) with zero biological priors.")
+w("   c. TWO BUGS CAUGHT before trusting the interpretability numbers -- both real,")
+w("      both worth remembering: (i) scoring the rare/ambiguous residue code 'X'")
+w("      against its true background frequency (~5e-6) let log-odds blow up from")
+w("      pseudocounts alone -- fixed by restricting PWM scoring to the 20 standard")
+w("      amino acids. (ii) 4 of 5 fitted PWMs were contaminated by an N-terminal/")
+w("      tag-region artifact: 53-84% of test proteins' 'best-matching window' for")
+w("      those channels sat at literal sequence position 0 (every protein starts")
+w("      with Met + a similar tag-like region) -- fixed via --min-window-pos to")
+w("      drop boundary-adjacent hits. Side effect: channel 74, the single highest-")
+w("      knockout-importance channel, only has 47 genuine non-artifact hits (vs 246")
+w("      for channel 84) -- its importance may be partly a shortcut, not biology.")
+w("   d. RULE-BASED REPLACEMENT (the payoff): swap the ENTIRE learned protein CNN")
+w("      for just 5 fixed PWM motif-match scores (drug tower still learned). Result")
+w("      (avg 2 seeds): balAcc 0.733 (MSE 0.38) with the artifact FIXED, vs 0.723")
+w("      contaminated, vs 0.841 for the full 96-channel learned tower, vs 0.586")
+w("      drug-only. => 5 hand-scannable motifs recover ~58% of the drug-only-to-")
+w("      full-model gap, at 687K params (vs 882K) with NO learned protein-side")
+w("      compute at all -- just a sliding-window scan. Cleaned-PWM version beats")
+w("      the contaminated one, confirming the N-terminal artifact was net noise.")
+w("   e. STILL OPEN: whether the 96 protein-tower channels are mostly redundant")
+w("      with each other or genuinely mostly unused (deferred by request); whether")
+w("      the drug/protein balance shifts on KIBA (4x more data, less protein reuse).")
 w()
 
 open(os.path.join(os.path.dirname(__file__), "RESULTS_SUMMARY.txt"), "w").write("\n".join(out) + "\n")

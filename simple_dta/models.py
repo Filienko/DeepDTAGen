@@ -107,44 +107,66 @@ class PredictionHead(nn.Module):
         seq.append(nn.Linear(prev, 1))
         self.net = nn.Sequential(*seq)
 
-    def forward(self, drug, protein):
-        return self.net(torch.cat([drug, protein], dim=1))
+    def forward(self, *parts):
+        x = parts[0] if len(parts) == 1 else torch.cat(parts, dim=1)
+        return self.net(x)
 
 
 class CNNDTA(nn.Module):
-    """DeepDTA: two 1D-CNN towers + prediction head. No graph, no GNN."""
+    """DeepDTA: two 1D-CNN towers + prediction head. No graph, no GNN.
+
+    `ablate` drops a tower entirely (retrains a single-tower model from
+    scratch, rather than just zeroing an input on the joint model) to
+    measure that tower's marginal contribution to affinity prediction:
+      "none"    -- both towers (baseline)
+      "drug"    -- drop the drug/SMILES tower; head sees protein only
+      "protein" -- drop the protein tower; head sees drug only
+    """
 
     def __init__(self, num_filters=32, drug_filters=None, prot_filters=None,
                  embed_dim=128, dropout=0.1, pool="max", head_dim=1024,
                  head_layers=2, proj_dim=0, drug_channels=None, prot_channels=None,
                  drug_dilations=None, prot_dilations=None,
-                 drug_kernel=4, prot_kernel=8):
+                 drug_kernel=4, prot_kernel=8, ablate="none"):
         super().__init__()
+        assert ablate in ("none", "drug", "protein"), f"unknown ablate mode {ablate}"
+        self.ablate = ablate
         drug_filters = drug_filters or num_filters
         prot_filters = prot_filters or num_filters
-        self.drug = SmilesCNN(embed_dim, drug_filters, kernel_size=drug_kernel, pool=pool,
-                              channels=drug_channels, dilations=drug_dilations)
-        self.protein = ProteinCNN(embed_dim, prot_filters, kernel_size=prot_kernel, pool=pool,
-                                  channels=prot_channels, dilations=prot_dilations)
+        self.drug = None if ablate == "drug" else SmilesCNN(
+            embed_dim, drug_filters, kernel_size=drug_kernel, pool=pool,
+            channels=drug_channels, dilations=drug_dilations)
+        self.protein = None if ablate == "protein" else ProteinCNN(
+            embed_dim, prot_filters, kernel_size=prot_kernel, pool=pool,
+            channels=prot_channels, dilations=prot_dilations)
         self.proj_dim = proj_dim
         if proj_dim:
-            # compress each tower to a compact joint binding embedding before the head
-            self.drug_proj = nn.Linear(self.drug.out_dim, proj_dim)
-            self.prot_proj = nn.Linear(self.protein.out_dim, proj_dim)
-            head_in = proj_dim * 2
+            # compress each surviving tower to a compact binding embedding before the head
+            if self.drug is not None:
+                self.drug_proj = nn.Linear(self.drug.out_dim, proj_dim)
+            if self.protein is not None:
+                self.prot_proj = nn.Linear(self.protein.out_dim, proj_dim)
+            head_in = proj_dim * (2 if ablate == "none" else 1)
         else:
-            head_in = self.drug.out_dim + self.protein.out_dim
+            head_in = ((self.drug.out_dim if self.drug is not None else 0) +
+                      (self.protein.out_dim if self.protein is not None else 0))
         self.head = PredictionHead(head_in, hidden=head_dim, layers=head_layers,
                                    dropout=dropout)
 
     def forward(self, batch):
         smiles, target, _ = batch
-        d = self.drug(smiles)
-        p = self.protein(target)
-        if self.proj_dim:
-            d = F.relu(self.drug_proj(d))
-            p = F.relu(self.prot_proj(p))
-        return self.head(d, p).squeeze(-1)
+        parts = []
+        if self.drug is not None:
+            d = self.drug(smiles)
+            if self.proj_dim:
+                d = F.relu(self.drug_proj(d))
+            parts.append(d)
+        if self.protein is not None:
+            p = self.protein(target)
+            if self.proj_dim:
+                p = F.relu(self.prot_proj(p))
+            parts.append(p)
+        return self.head(*parts).squeeze(-1)
 
 
 class GNNDTA(nn.Module):

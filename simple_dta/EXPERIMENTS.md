@@ -9,9 +9,11 @@ trains >1 week), within **2–5 points** of DeepDTAGen accuracy, as a base for a
 **MPC** (privacy-preserving inference) protocol. CNN is the current front-runner on
 accuracy-per-parameter.
 
-Last updated: 2026-07-04. **If resuming: read Section 8 first** — it documents the
-batch launched 2026-07-04 while Steven was away, including the one ablation we must
-not lose track of (dilation vs. balAcc-checkpoint-selection).
+Last updated: 2026-07-06. **If resuming: read Section 9 first** — it documents the
+tower-ablation + protein-tower interpretability + rule-based motif-scan replacement
+work (drug-only vs protein-only vs full model, plus swapping the learned protein
+CNN for 5 hand-scored motifs), all now complete. Section 8 (the 2026-07-04 batch,
+also complete) resolved the dilation-vs-balAcc-checkpoint-selection question.
 
 ---
 
@@ -286,3 +288,204 @@ hardcoded 4 / 8). Backward compatible — defaults reproduce prior param counts 
 ### 8.3 What we already RULED OUT (don't re-run)
 - **More regularization** (dropout 0.2/0.3, weight-decay 1e-4): monotonically LOWERED
   balAcc in both configs. Overfitting is an MSE story, not a balAcc lever. Keep d0.1/wd0.
+
+---
+
+## 9. Tower-ablation + protein-tower interpretability (2026-07-06, complete)
+
+Motivating questions from Steven: (1) how much does the model lose if the protein
+tower is removed and only the drug embedding predicts affinity? (2) same for
+removing the drug tower — is protein-alone better than random guessing, and by how
+much? (3) can the protein tower's learned filters be read out and replaced by a
+hard-coded rule (e.g. a sliding-window motif match) instead of a learned CNN?
+
+### 9.1 Code changes
+- `models.py` / `train.py`: new `--ablate {none,drug,protein}` flag on `CNNDTA`.
+  Unlike zeroing an input on the joint model, this **retrains a single-tower model
+  from scratch** (head only sees the surviving tower), which is what actually
+  answers "how good could a drug-only/protein-only model be" rather than "how much
+  does the joint model rely on this input". `PredictionHead.forward` now takes
+  `*parts` (1 or 2 tensors) instead of a hardcoded `(drug, protein)` pair.
+- `mean_baseline.py` (new): trivial floor — predict the train-set mean affinity for
+  every test example, report the same metric bundle, no model at all. Davis floor:
+  **MSE 0.8015, CI 0.500, rm2 0.000, balAcc_mean 0.500** (exactly random, as expected
+  for a constant predictor). Also dumps `_pred.txt`/`_true.txt` so it folds into
+  `RESULTS_SUMMARY.txt` via the normal `gen_results.py` panel() mechanism.
+- `interpret_protein_tower.py` (new): post-hoc, no retraining, works on any existing
+  `runs/<tag>_best.pth` + its `_summary.json`. Two analyses:
+  1. **Channel knockout** — zero each final-layer protein channel (post-ReLU,
+     pre-pool) one at a time, measure ΔMSE on the test set. 96 channels × ~20
+     batches, all forward-only — runs in well under a minute on CPU.
+  2. **Motif extraction** — for the top-k channels from (1), use the argmax
+     position under max-pool (the position that *is* the pooled value) to find
+     each channel's most-activating window in the raw protein string. Window
+     length = the tower's **receptive field**, computed exactly from the trained
+     model's own `Conv1d.kernel_size`/`.dilation` via
+     `RF = (kernel-1) * sum(dilations) + 1` (matches the RF=22 figure from §5 for
+     the non-dilated tower; generalizes correctly to dilated towers too — verified
+     RF=50 on the `regB_d1_wd0` [1,2,4]-dilated checkpoint). Dedupes by window text
+     before ranking since Davis reuses each protein across ~68 drug pairs on
+     average (raw top-N would otherwise just repeat one protein's window).
+
+### 9.2 Interpretability finding (already run, no bugs, real signal)
+Ran on `cnn_davis_stable_pool_max` (882K, plain 32-64-96 towers, no dilation) and
+`cnn_davis_regB_d1_wd0` (800K, protein dilation [1,2,4]) — **both models' top
+knockout-ranked channels correspond to real, textbook protein-kinase catalytic
+motifs**, found with zero biological priors:
+- `regB_d1_wd0` channel 50 (ΔMSE 0.0109): consensus
+  `FQILRGLAYCHRRKILHRDLKPQNLLINERGELKLADFGLARAKSVPTKT` — contains **both the HRD
+  motif** (catalytic-loop His-Arg-Asp) **and the DFG motif** (activation-loop
+  start), the two most conserved motifs across the human kinome.
+- `regB_d1_wd0` channel 57 (ΔMSE 0.0317, the single most important channel):
+  spans DFG through the **APE motif** (activation-loop end):
+  `...IADFGLARVIEDNEYTAREGAKFPIKWTAPEAINFG...`
+- `stable_pool_max` channel 69: `...FPIKWTAPEA...` — same APE-region motif,
+  found independently in the non-dilated model too.
+
+Strong early evidence for Steven's Q3: a handful of channels dominate (knockout
+ΔMSE drops off sharply after the top 2-3), and what they've learned is a small,
+nameable set of conserved sequence motifs — exactly the kind of thing a
+hard-coded PWM/regex sliding-window match could plausibly reproduce instead of a
+learned conv stack. **The actual replacement-and-compare step is in §9.4** —
+short answer: yes, largely (recovers ~58% of the drug-only-to-full-model gap).
+Output JSON per run: `runs/<tag>_interpret.json`.
+
+### 9.3 Tower-ablation training batch — DONE (launched + finished 2026-07-06)
+`jobs_tower_ablation.txt`, launched via
+`setsid nohup bash run_queue.sh jobs_tower_ablation.txt 4 10 > runs/tower_ablation_batch.log 2>&1 < /dev/null & disown`.
+Davis, 100 epochs, balAcc-selected, dropout 0.1, wd 0, seeds 4221 + 7 (2 seeds
+per ablation). All 4 tags registered in `gen_results.py`'s Davis appendix and
+folded into `RESULTS_SUMMARY.txt`.
+
+| tag | ablate | params | cost | best MSE | best CI | balAcc_mean |
+|---|---|---|---|---|---|---|
+| `cnn_davis_ablate_drugtower_only` (s4221) | `protein` (drug tower survives) | 682K | ~6s/epoch, ~13min | 0.6876 | 0.7408 | 0.589 |
+| `cnn_davis_ablate_drugtower_only_s7` | `protein` | 682K | ~13min | 0.6952 | 0.7438 | 0.586 |
+| `cnn_davis_ablate_prottower_only` (s4221) | `drug` (protein tower survives) | 726K | ~112s/epoch, ~186min | 0.7617 | 0.6507 | 0.541 |
+| `cnn_davis_ablate_prottower_only_s7` | `drug` | 726K | ~186min | 0.7396 | 0.6524 | 0.539 |
+
+Reference points: full model (both towers) `cnn_davis_stable_pool_max` =
+balAcc_mean **0.841**, MSE 0.267; floor `mean_baseline_davis` = balAcc_mean
+**0.500**, MSE 0.802.
+
+**Answers Q1/Q2 directly:** drug-tower-only (avg 2 seeds) = balAcc **0.586**,
+MSE ~0.69 — clears the floor (0.50/0.80) by a lot but nowhere near the full
+model (0.841/0.267). protein-tower-only (avg 2 seeds) = balAcc **0.539**, MSE
+~0.75 — barely above the floor. **On Davis, drug IDENTITY alone carries far
+more signal than protein IDENTITY alone** (different drugs have systematically
+different affinity distributions across the whole panel, independent of which
+protein they're tested against; Davis's ~442 proteins are comparatively less
+individually distinguishing for affinity than its drugs are). Protein tower
+was confirmed ~18x more expensive per epoch than the drug tower (sequence
+length ~1200 vs SMILES ~85) — matches the plan's estimate.
+
+### 9.4 Rule-based motif-scan replacement for the protein tower (2026-07-06)
+
+Direct test of the §9.2 hypothesis: replace the ENTIRE learned protein CNN
+tower with a fixed, hand-scored feature vector — one scalar per top-ranked
+channel, computed by scanning the raw sequence for the best match to that
+channel's PWM (no learned protein-side parameters at all; only the drug
+SmilesCNN is learned, same as the drug-tower-only ablation, plus 5 extra
+fixed input dims to the head).
+
+**New code:**
+- `interpret_protein_tower.py --save-pwm [--pwm-n N] [--pwm-pseudocount P]`:
+  fits a proper position weight matrix per top channel (frequency table over
+  N=300 aligned top-activating windows, not just the majority-vote consensus
+  string used for the printed preview) and writes `runs/<tag>_pwm.json`
+  (log-odds vs. a TRAIN-split amino-acid background, so the score isn't fit
+  and evaluated on the same data).
+- `rule_features.py`: `fit_pwm`/`load_pwms`/`scan_max_score`/`RuleFeaturizer`.
+  Scores every window of a sequence against a PWM (vectorized via
+  `sliding_window_view`), keeps the max (mirrors the max-pool the real
+  channel used). `RuleFeaturizer` caches by sequence text so Davis's protein
+  reuse (~68 drug pairs/protein) only pays the scan cost once per unique
+  protein (379 unique train proteins, not 25050 rows).
+- `train_rule.py`: `RuleProteinDTA` = learned `SmilesCNN` (drug) + the fixed
+  k-dim rule-feature vector (standardized with TRAIN mean/std) concatenated
+  straight into the `PredictionHead`. Mirrors `train.py`'s loop/summary
+  format exactly so results fold into `RESULTS_SUMMARY.txt` normally.
+
+**Bug caught and fixed before trusting any of this:** the first PWM fit used
+all 25 letters `CHARPROTSET` can encode (including ambiguous/rare codes
+B/U/X/Z/O). `X` has background frequency ≈5×10⁻⁶ in the real training
+corpus — so any position where a pseudocount alone gives it a nonzero
+probability produces a log-odds ratio that blows up to a huge, meaningless
+score. Verified this was live: every one of the 5 channels' "best-scoring
+window" on a test sequence was an artifact region full of the letter used
+for padding, not the real embedded motif. **Fix:** restrict the PWM/scoring
+alphabet to the 20 standard amino acids only; any other character (in
+sequence or padding) scores neutral (0), the same treatment already used for
+out-of-vocabulary symbols. Re-validated after the fix: a PWM's own top hit
+window, embedded in genuinely random 20-AA padding, scores 8.5 standard
+deviations above the mean of 200 random 200-residue sequences, and other
+channels' PWMs correctly score much lower on the same window. Lesson: always
+re-derive background frequencies over the same restricted alphabet used for
+the foreground counts, or rare symbols silently dominate log-odds scores.
+
+**`rule_davis`/`rule_davis_s7` — DONE.** 100 epochs, balAcc-selected, 687K
+params (drug tower 682K + ~5K for the 5 extra head input dims), using the 5
+PWMs fit from `cnn_davis_stable_pool_max` (channels 74/84/69/56/2, §9.2).
+
+**Second bug caught mid-flight (2026-07-06, same session): an N-terminal
+artifact contaminated 4 of the 5 templates.** All 5 fitted templates showed
+an identical, high-confidence `M` then `A` at positions 1-2 — implausible for
+independent motifs. Checked directly: for channels 74/69/56/2, the
+"best-matching window" landed at position 0 (the very start of the protein)
+for **53-84% of test proteins**; only channel 84 was clean (32% at position 0,
+median position 211). Nearly every protein starts with Met plus a similar
+N-terminal/tag region (plausibly a shared expression-construct tag across
+Davis's kinase clones, not real kinase biology) — for channels without many
+genuinely strong internal hits, this generic boundary region became the
+"tallest" activation by default, and our top-300-by-value window pool included
+it. **Fix:** added `--min-window-pos` (default 15) to
+`interpret_protein_tower.py`, dropping any candidate window that starts before
+that position, for both the printed preview and the PWM fit. Re-ran on
+`cnn_davis_stable_pool_max`: consensus strings are now clean again
+(`...FPIKWTAPEA...` for channel 69, `...MAPEV...` for channel 2,
+`...WSMGVIMYEMLC...` for channel 84 — the same real motifs as the original
+small-preview find in §9.2, now confirmed at proper statistical support).
+**Side finding:** channel 74 (the single highest knockout-importance channel)
+only has **47 genuine non-artifact hits** across the whole test set, vs. 246
+for channel 84 — meaning channel 74's apparent importance in the *original*
+knockout ranking may be disproportionately driven by the N-terminal/tag
+pattern rather than real kinase biology. Possible shortcut-learning signal,
+worth another look if the model's importance ranking gets revisited.
+
+**Ran both versions in parallel for a clean before/after comparison** (old
+contaminated PWMs left running rather than killed, since they were already
+>50% done when the second bug was found) — `rule_davis`/`rule_davis_s7`
+(contaminated) vs. `rule_davis_v2clean`/`rule_davis_v2clean_s7`
+(artifact-filtered), all 100 epochs, balAcc-selected. Both pairs registered
+in `gen_results.py` and folded into `RESULTS_SUMMARY.txt`.
+
+**Final results (§9.4 payoff):**
+
+| model | params | protein-side compute | best MSE | best CI | balAcc_mean |
+|---|---|---|---|---|---|
+| Full model (both towers) | 882K | learned 96-channel CNN | 0.267 | — | **0.841** |
+| **Rule v2 (clean)**, avg 2 seeds | 687K | 5 fixed PWM scans | 0.38-0.39 | 0.843/0.844 | **0.733** |
+| Rule (N-term-contaminated), avg 2 seeds | 687K | 5 fixed PWM scans (buggy) | 0.38-0.41 | 0.834/0.840 | 0.723 |
+| Drug-tower-only, avg 2 seeds (§9.3) | 682K | none | ~0.69 | ~0.74 | 0.586 |
+| Protein-tower-only, avg 2 seeds (§9.3) | 726K | learned 96-channel CNN | ~0.75 | ~0.65 | 0.539 |
+| Floor (mean-affinity) | — | none | 0.80 | 0.50 | 0.500 |
+
+**Bottom line:** replacing the *entire* learned protein CNN tower with **5
+fixed PWM motif-match scores** takes drug-only's balAcc from 0.586 to 0.733 —
+recovering about **58% of the full drug-only-to-full-model gap** (0.841 −
+0.586 = 0.255 total; the rule scan recovers 0.147 of it), at 687K params (vs
+882K) with the entire protein side reduced to 5 sliding-window scans instead
+of a 3-layer conv stack. The corrected (artifact-filtered) version beats the
+contaminated one by +0.010 balAcc — confirming the N-terminal artifact was
+net noise, not a useful (if biologically spurious) signal. The full learned
+tower still leads by a real margin (0.841 vs 0.733), so 5 motifs don't fully
+replace 96 channels — but they capture a large share of the value at a
+fraction of the size and with zero learned protein-side parameters.
+
+**Deferred (user's call, 2026-07-06):** whether the 96 protein-tower channels
+are mostly redundant with each other vs. genuinely low-value — see memory
+[[pending-channel-redundancy-check]]. Natural next steps if resuming this
+thread: (a) try more than 5 motifs (does balAcc keep climbing toward 0.841,
+or plateau?), (b) the redundancy check above, (c) repeat drug-only vs
+protein-only vs rule-scan on KIBA (4x more data, far less protein reuse than
+Davis's ~68x/protein) to see if the drug/protein signal balance shifts.

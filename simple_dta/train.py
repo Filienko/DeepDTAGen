@@ -97,6 +97,10 @@ def main():
                     help="conv kernel size for the drug/SMILES tower (default 4)")
     ap.add_argument("--prot-kernel", type=int, default=8,
                     help="conv kernel size for the protein tower (default 8)")
+    ap.add_argument("--ablate", choices=["none", "drug", "protein"], default="none",
+                    help="CNN only: drop a tower entirely and retrain single-tower "
+                         "(measures that modality's marginal value, vs. just zeroing "
+                         "an input on the joint model)")
     ap.add_argument("--prot-dilations", default="",
                     help="CNN: comma list of protein conv dilations, one per layer. e.g. 1,2,4")
     ap.add_argument("--head-dim", type=int, default=1024,
@@ -135,8 +139,9 @@ def main():
     gnn_cfg = (f" | node_feat={args.node_feat} gcn_dim={args.gcn_dim} "
                f"gcn_layers={args.gcn_layers} embed_dim={args.embed_dim}"
                if args.model == "gnn" else f" | embed_dim={args.embed_dim}")
+    ablate_note = f" | ablate={args.ablate}" if args.ablate != "none" else ""
     print(f"=== {tag} | device={device} | pool={args.pool} | head_dim={args.head_dim} "
-          f"| head_layers={args.head_layers} | seed={args.seed}{gnn_cfg} ===")
+          f"| head_layers={args.head_layers} | seed={args.seed}{gnn_cfg}{ablate_note} ===")
 
     train_loader, test_loader = build_loaders(args.model, args.dataset,
                                               args.batch_size, featurizer=args.node_feat)
@@ -152,7 +157,8 @@ def main():
                        drug_dilations=_il(args.drug_dilations),
                        prot_dilations=_il(args.prot_dilations),
                        drug_kernel=args.drug_kernel,
-                       prot_kernel=args.prot_kernel).to(device)
+                       prot_kernel=args.prot_kernel,
+                       ablate=args.ablate).to(device)
     else:
         from data import FEATURIZERS
         node_feat_dim = FEATURIZERS[args.node_feat][1]
@@ -220,6 +226,7 @@ def main():
         "prot_channels": args.prot_channels, "drug_dilations": args.drug_dilations,
         "prot_dilations": args.prot_dilations,
         "drug_kernel": args.drug_kernel, "prot_kernel": args.prot_kernel,
+        "ablate": args.ablate,
         "dropout": args.dropout,
         "weight_decay": args.weight_decay, "select_metric": args.select_metric,
         "history": history,

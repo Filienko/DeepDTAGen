@@ -1,0 +1,108 @@
+{
+  "tag": "mean_baseline_davis",
+  "dataset": "davis",
+  "train_mean": 5.453274250030518,
+  "n_train": 25050,
+  "n_test": 5010,
+  "metrics": {
+    "MSE": 0.8015172481536865,
+    "RMSE": 0.8952749567332298,
+    "CI": 0.5,
+    "rm2": 7.126017137084848e-14,
+    "Pearson": NaN,
+    "Spearman": NaN,
+    "balacc": {
+      "5": NaN,
+      "5.5": 0.5,
+      "6": 0.5,
+      "6.5": 0.5,
+      "7": 0.5,
+      "7.5": 0.5,
+      "8": 0.5,
+      "8.5": 0.5
+    },
+    "balacc_full": {
+      "5": {
+        "threshold": 5.0,
+        "bal_acc": NaN,
+        "sensitivity": 1.0,
+        "specificity": NaN,
+        "tp": 5010,
+        "tn": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "5.5": {
+        "threshold": 5.5,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 3737,
+        "fp": 0,
+        "fn": 1273
+      },
+      "6": {
+        "threshold": 6.0,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4090,
+        "fp": 0,
+        "fn": 920
+      },
+      "6.5": {
+        "threshold": 6.5,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4393,
+        "fp": 0,
+        "fn": 617
+      },
+      "7": {
+        "threshold": 7.0,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4593,
+        "fp": 0,
+        "fn": 417
+      },
+      "7.5": {
+        "threshold": 7.5,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4753,
+        "fp": 0,
+        "fn": 257
+      },
+      "8": {
+        "threshold": 8.0,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4866,
+        "fp": 0,
+        "fn": 144
+      },
+      "8.5": {
+        "threshold": 8.5,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4928,
+        "fp": 0,
+        "fn": 82
+      }
+    },
+    "balacc_mean": 0.5
+  }
+}

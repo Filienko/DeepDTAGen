@@ -1,0 +1,2194 @@
+{
+  "tag": "cnn_davis_ablate_prottower_only",
+  "model": "cnn",
+  "dataset": "davis",
+  "epochs": 100,
+  "params": 726465,
+  "mean_epoch_sec": 111.91264215707778,
+  "total_train_sec": 11191.264215707779,
+  "best": {
+    "epoch": 15,
+    "MSE": 0.761715829372406,
+    "RMSE": 0.8727633295300656,
+    "CI": 0.6506907343864441,
+    "rm2": 0.09611491827302236,
+    "Pearson": 0.315216432712764,
+    "Spearman": 0.29656036812023945,
+    "balacc": {
+      "5": NaN,
+      "5.5": 0.6257860451975857,
+      "6": 0.5946449452535346,
+      "6.5": 0.5681074687481669,
+      "7": 0.5,
+      "7.5": 0.5,
+      "8": 0.5,
+      "8.5": 0.5
+    },
+    "balacc_full": {
+      "5": {
+        "threshold": 5.0,
+        "bal_acc": NaN,
+        "sensitivity": 1.0,
+        "specificity": NaN,
+        "tp": 5010,
+        "tn": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "5.5": {
+        "threshold": 5.5,
+        "bal_acc": 0.6257860451975857,
+        "sensitivity": 0.7179890023566379,
+        "specificity": 0.5335830880385336,
+        "tp": 914,
+        "tn": 1994,
+        "fp": 1743,
+        "fn": 359
+      },
+      "6": {
+        "threshold": 6.0,
+        "bal_acc": 0.5946449452535346,
+        "sensitivity": 0.27608695652173915,
+        "specificity": 0.91320293398533,
+        "tp": 254,
+        "tn": 3735,
+        "fp": 355,
+        "fn": 666
+      },
+      "6.5": {
+        "threshold": 6.5,
+        "bal_acc": 0.5681074687481669,
+        "sensitivity": 0.19448946515397084,
+        "specificity": 0.9417254723423628,
+        "tp": 120,
+        "tn": 4137,
+        "fp": 256,
+        "fn": 497
+      },
+      "7": {
+        "threshold": 7.0,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4593,
+        "fp": 0,
+        "fn": 417
+      },
+      "7.5": {
+        "threshold": 7.5,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4753,
+        "fp": 0,
+        "fn": 257
+      },
+      "8": {
+        "threshold": 8.0,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4866,
+        "fp": 0,
+        "fn": 144
+      },
+      "8.5": {
+        "threshold": 8.5,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4928,
+        "fp": 0,
+        "fn": 82
+      }
+    },
+    "balacc_mean": 0.5412197798856125
+  },
+  "pool": "max",
+  "head_dim": 1024,
+  "head_layers": 2,
+  "seed": 4221,
+  "node_feat": "full",
+  "gcn_dim": 128,
+  "gcn_layers": 2,
+  "embed_dim": 128,
+  "drug_filters": 32,
+  "prot_filters": 32,
+  "proj_dim": 0,
+  "drug_channels": "",
+  "prot_channels": "",
+  "drug_dilations": "",
+  "prot_dilations": "",
+  "drug_kernel": 4,
+  "prot_kernel": 8,
+  "ablate": "drug",
+  "dropout": 0.1,
+  "weight_decay": 0.0,
+  "select_metric": "balacc",
+  "history": [
+    {
+      "epoch": 5,
+      "train_mse": 0.7703247684204649,
+      "MSE": 0.7655444145202637,
+      "RMSE": 0.8749539499426605,
+      "CI": 0.6468367576599121,
+      "rm2": 0.10119520653990713,
+      "Pearson": 0.31929880065295774,
+      "Spearman": 0.29394722042219634,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6031240849398628,
+        "6": 0.5302872860635697,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 0.896806387225549,
+          "specificity": NaN,
+          "tp": 4493,
+          "tn": 0,
+          "fp": 0,
+          "fn": 517
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6031240849398628,
+          "sensitivity": 0.3079340141398272,
+          "specificity": 0.8983141557398984,
+          "tp": 392,
+          "tn": 3357,
+          "fp": 380,
+          "fn": 881
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5302872860635697,
+          "sensitivity": 0.075,
+          "specificity": 0.9855745721271394,
+          "tp": 69,
+          "tn": 4031,
+          "fp": 59,
+          "fn": 851
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5190587672862047
+    },
+    {
+      "epoch": 10,
+      "train_mse": 0.7634351791069656,
+      "MSE": 0.8611711859703064,
+      "RMSE": 0.927993095863491,
+      "CI": 0.6502898335456848,
+      "rm2": 0.104146964280039,
+      "Pearson": 0.3229613832680206,
+      "Spearman": 0.29588520392586515,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.5725604194567352,
+        "6": 0.5013859360051026,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 0.4942115768463074,
+          "specificity": NaN,
+          "tp": 2476,
+          "tn": 0,
+          "fp": 0,
+          "fn": 2534
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.5725604194567352,
+          "sensitivity": 0.20345640219952868,
+          "specificity": 0.9416644367139416,
+          "tp": 259,
+          "tn": 3519,
+          "fp": 218,
+          "fn": 1014
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5013859360051026,
+          "sensitivity": 0.003260869565217391,
+          "specificity": 0.9995110024449878,
+          "tp": 3,
+          "tn": 4088,
+          "fp": 2,
+          "fn": 917
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5105637650659769
+    },
+    {
+      "epoch": 15,
+      "train_mse": 0.7688055621411748,
+      "MSE": 0.761715829372406,
+      "RMSE": 0.8727633295300656,
+      "CI": 0.6506907343864441,
+      "rm2": 0.09611491827302236,
+      "Pearson": 0.315216432712764,
+      "Spearman": 0.29656036812023945,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6257860451975857,
+        "6": 0.5946449452535346,
+        "6.5": 0.5681074687481669,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6257860451975857,
+          "sensitivity": 0.7179890023566379,
+          "specificity": 0.5335830880385336,
+          "tp": 914,
+          "tn": 1994,
+          "fp": 1743,
+          "fn": 359
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5946449452535346,
+          "sensitivity": 0.27608695652173915,
+          "specificity": 0.91320293398533,
+          "tp": 254,
+          "tn": 3735,
+          "fp": 355,
+          "fn": 666
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5681074687481669,
+          "sensitivity": 0.19448946515397084,
+          "specificity": 0.9417254723423628,
+          "tp": 120,
+          "tn": 4137,
+          "fp": 256,
+          "fn": 497
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5412197798856125
+    },
+    {
+      "epoch": 20,
+      "train_mse": 0.7508342859131133,
+      "MSE": 0.7252925634384155,
+      "RMSE": 0.851641100134567,
+      "CI": 0.6503207683563232,
+      "rm2": 0.10075348136804303,
+      "Pearson": 0.31823247777691527,
+      "Spearman": 0.2973380059923525,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6181241868905686,
+        "6": 0.5540541617944085,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 0.9962075848303393,
+          "specificity": NaN,
+          "tp": 4991,
+          "tn": 0,
+          "fp": 0,
+          "fn": 19
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6181241868905686,
+          "sensitivity": 0.41633935585231735,
+          "specificity": 0.8199090179288199,
+          "tp": 530,
+          "tn": 3064,
+          "fp": 673,
+          "fn": 743
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5540541617944085,
+          "sensitivity": 0.14673913043478262,
+          "specificity": 0.9613691931540342,
+          "tp": 135,
+          "tn": 3932,
+          "fp": 158,
+          "fn": 785
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5245969069549967
+    },
+    {
+      "epoch": 25,
+      "train_mse": 0.7465682464397834,
+      "MSE": 0.7262642979621887,
+      "RMSE": 0.8522114162355423,
+      "CI": 0.649963915348053,
+      "rm2": 0.10146154853079618,
+      "Pearson": 0.3189057989128282,
+      "Spearman": 0.29618087965553197,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6229109301877301,
+        "6": 0.5423700435845646,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 0.9940119760479041,
+          "specificity": NaN,
+          "tp": 4980,
+          "tn": 0,
+          "fp": 0,
+          "fn": 30
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6229109301877301,
+          "sensitivity": 0.4312647289866457,
+          "specificity": 0.8145571313888146,
+          "tp": 549,
+          "tn": 3044,
+          "fp": 693,
+          "fn": 724
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5423700435845646,
+          "sensitivity": 0.1282608695652174,
+          "specificity": 0.956479217603912,
+          "tp": 118,
+          "tn": 3912,
+          "fp": 178,
+          "fn": 802
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5236115676817564
+    },
+    {
+      "epoch": 30,
+      "train_mse": 0.7499343790598734,
+      "MSE": 0.7453600764274597,
+      "RMSE": 0.8633423865578822,
+      "CI": 0.6528099179267883,
+      "rm2": 0.10284564082340329,
+      "Pearson": 0.3211452011458639,
+      "Spearman": 0.29840373928386543,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6125079642419986,
+        "6": 0.5349633251833741,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 0.9562874251497006,
+          "specificity": NaN,
+          "tp": 4791,
+          "tn": 0,
+          "fp": 0,
+          "fn": 219
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6125079642419986,
+          "sensitivity": 0.35506677140612725,
+          "specificity": 0.8699491570778699,
+          "tp": 452,
+          "tn": 3251,
+          "fp": 486,
+          "fn": 821
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5349633251833741,
+          "sensitivity": 0.1,
+          "specificity": 0.9699266503667482,
+          "tp": 92,
+          "tn": 3967,
+          "fp": 123,
+          "fn": 828
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5210673270607675
+    },
+    {
+      "epoch": 35,
+      "train_mse": 0.7546784094802872,
+      "MSE": 0.7396235466003418,
+      "RMSE": 0.8600136897749604,
+      "CI": 0.6530324220657349,
+      "rm2": 0.09986758567557724,
+      "Pearson": 0.3180943774406069,
+      "Spearman": 0.29998598199039256,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6153870731970333,
+        "6": 0.5443526097586904,
+        "6.5": 0.502203483440762,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 0.9882235528942116,
+          "specificity": NaN,
+          "tp": 4951,
+          "tn": 0,
+          "fp": 0,
+          "fn": 59
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6153870731970333,
+          "sensitivity": 0.373134328358209,
+          "specificity": 0.8576398180358576,
+          "tp": 475,
+          "tn": 3205,
+          "fp": 532,
+          "fn": 798
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5443526097586904,
+          "sensitivity": 0.12391304347826088,
+          "specificity": 0.9647921760391198,
+          "tp": 114,
+          "tn": 3946,
+          "fp": 144,
+          "fn": 806
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.502203483440762,
+          "sensitivity": 0.004862236628849271,
+          "specificity": 0.9995447302526748,
+          "tp": 3,
+          "tn": 4391,
+          "fp": 2,
+          "fn": 614
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5231347380566408
+    },
+    {
+      "epoch": 40,
+      "train_mse": 0.7476628991753279,
+      "MSE": 0.7444813251495361,
+      "RMSE": 0.862833312494097,
+      "CI": 0.6493290066719055,
+      "rm2": 0.0982782042398799,
+      "Pearson": 0.31555448648669565,
+      "Spearman": 0.29421150318360967,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6206282854140492,
+        "6": 0.5925786648240672,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6206282854140492,
+          "sensitivity": 0.7124901806755696,
+          "specificity": 0.5287663901525288,
+          "tp": 907,
+          "tn": 1976,
+          "fp": 1761,
+          "fn": 366
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5925786648240672,
+          "sensitivity": 0.26413043478260867,
+          "specificity": 0.9210268948655257,
+          "tp": 243,
+          "tn": 3767,
+          "fp": 323,
+          "fn": 677
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5304581357483024
+    },
+    {
+      "epoch": 45,
+      "train_mse": 0.7471117451519309,
+      "MSE": 0.7420036792755127,
+      "RMSE": 0.861396354343059,
+      "CI": 0.6510597467422485,
+      "rm2": 0.10083898304575771,
+      "Pearson": 0.31939030811352775,
+      "Spearman": 0.2970411826115331,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.612063480185092,
+        "6": 0.5013859360051026,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 0.9962075848303393,
+          "specificity": NaN,
+          "tp": 4991,
+          "tn": 0,
+          "fp": 0,
+          "fn": 19
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.612063480185092,
+          "sensitivity": 0.35899450117831894,
+          "specificity": 0.8651324591918651,
+          "tp": 457,
+          "tn": 3233,
+          "fp": 504,
+          "fn": 816
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5013859360051026,
+          "sensitivity": 0.003260869565217391,
+          "specificity": 0.9995110024449878,
+          "tp": 3,
+          "tn": 4088,
+          "fp": 2,
+          "fn": 917
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5162070594557421
+    },
+    {
+      "epoch": 50,
+      "train_mse": 0.7620431709670259,
+      "MSE": 0.72201007604599,
+      "RMSE": 0.8497117605670702,
+      "CI": 0.6514400243759155,
+      "rm2": 0.10101250190783541,
+      "Pearson": 0.32024864016940957,
+      "Spearman": 0.29781150068832507,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6269995739091117,
+        "6": 0.576055065376847,
+        "6.5": 0.5067379184727729,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6269995739091117,
+          "sensitivity": 0.5098193244304792,
+          "specificity": 0.7441798233877441,
+          "tp": 649,
+          "tn": 2781,
+          "fp": 956,
+          "fn": 624
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.576055065376847,
+          "sensitivity": 0.21739130434782608,
+          "specificity": 0.934718826405868,
+          "tp": 200,
+          "tn": 3823,
+          "fp": 267,
+          "fn": 720
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5067379184727729,
+          "sensitivity": 0.01620745542949757,
+          "specificity": 0.9972683815160482,
+          "tp": 10,
+          "tn": 4381,
+          "fp": 12,
+          "fn": 607
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5299703653941046
+    },
+    {
+      "epoch": 55,
+      "train_mse": 0.7503922472837681,
+      "MSE": 0.7211512327194214,
+      "RMSE": 0.8492062368585275,
+      "CI": 0.6544697880744934,
+      "rm2": 0.10303417184471764,
+      "Pearson": 0.32125705639082575,
+      "Spearman": 0.29928495677181977,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6257092143047982,
+        "6": 0.5852131391516956,
+        "6.5": 0.502203483440762,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6257092143047982,
+          "sensitivity": 0.5176747839748626,
+          "specificity": 0.7337436446347337,
+          "tp": 659,
+          "tn": 2742,
+          "fp": 995,
+          "fn": 614
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5852131391516956,
+          "sensitivity": 0.2391304347826087,
+          "specificity": 0.9312958435207824,
+          "tp": 220,
+          "tn": 3809,
+          "fp": 281,
+          "fn": 700
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.502203483440762,
+          "sensitivity": 0.004862236628849271,
+          "specificity": 0.9995447302526748,
+          "tp": 3,
+          "tn": 4391,
+          "fp": 2,
+          "fn": 614
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5304465481281795
+    },
+    {
+      "epoch": 60,
+      "train_mse": 0.7460017769731685,
+      "MSE": 0.7191130518913269,
+      "RMSE": 0.8480053371832791,
+      "CI": 0.6515122056007385,
+      "rm2": 0.10295264231635927,
+      "Pearson": 0.32384796527298304,
+      "Spearman": 0.29855020690319983,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6329555972093674,
+        "6": 0.5890586797066015,
+        "6.5": 0.5073070056569295,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6329555972093674,
+          "sensitivity": 0.5035349567949725,
+          "specificity": 0.7623762376237624,
+          "tp": 641,
+          "tn": 2849,
+          "fp": 888,
+          "fn": 632
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5890586797066015,
+          "sensitivity": 0.25,
+          "specificity": 0.928117359413203,
+          "tp": 230,
+          "tn": 3796,
+          "fp": 294,
+          "fn": 690
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5073070056569295,
+          "sensitivity": 0.01620745542949757,
+          "specificity": 0.9984065558843614,
+          "tp": 10,
+          "tn": 4386,
+          "fp": 7,
+          "fn": 607
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5327601832246998
+    },
+    {
+      "epoch": 65,
+      "train_mse": 0.7480790199395901,
+      "MSE": 0.7221242785453796,
+      "RMSE": 0.8497789586388802,
+      "CI": 0.650705099105835,
+      "rm2": 0.0987717823991647,
+      "Pearson": 0.3164174913516125,
+      "Spearman": 0.2969201502819564,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6276246263296422,
+        "6": 0.5509022536409057,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6276246263296422,
+          "sensitivity": 0.46504320502749413,
+          "specificity": 0.7902060476317903,
+          "tp": 592,
+          "tn": 2953,
+          "fp": 784,
+          "fn": 681
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5509022536409057,
+          "sensitivity": 0.1423913043478261,
+          "specificity": 0.9594132029339854,
+          "tp": 131,
+          "tn": 3924,
+          "fp": 166,
+          "fn": 789
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5255038399957926
+    },
+    {
+      "epoch": 70,
+      "train_mse": 0.7503912157450845,
+      "MSE": 0.727634072303772,
+      "RMSE": 0.8530146964172258,
+      "CI": 0.64933180809021,
+      "rm2": 0.09483333985127222,
+      "Pearson": 0.3129480886476498,
+      "Spearman": 0.2935841236109271,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6215643400394475,
+        "6": 0.539487881364941,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6215643400394475,
+          "sensitivity": 0.43205027494108406,
+          "specificity": 0.811078405137811,
+          "tp": 550,
+          "tn": 3031,
+          "fp": 706,
+          "fn": 723
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.539487881364941,
+          "sensitivity": 0.10978260869565218,
+          "specificity": 0.9691931540342298,
+          "tp": 101,
+          "tn": 3964,
+          "fp": 126,
+          "fn": 819
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5230074602006269
+    },
+    {
+      "epoch": 75,
+      "train_mse": 0.7435522778400642,
+      "MSE": 0.7231720089912415,
+      "RMSE": 0.8503952075307347,
+      "CI": 0.6490249633789062,
+      "rm2": 0.09758005008615304,
+      "Pearson": 0.31267848883218075,
+      "Spearman": 0.2914309024019123,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6253591134787031,
+        "6": 0.5484971297969597,
+        "6.5": 0.502203483440762,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6253591134787031,
+          "sensitivity": 0.48860958366064416,
+          "specificity": 0.7621086432967621,
+          "tp": 622,
+          "tn": 2848,
+          "fp": 889,
+          "fn": 651
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5484971297969597,
+          "sensitivity": 0.1358695652173913,
+          "specificity": 0.9611246943765281,
+          "tp": 125,
+          "tn": 3931,
+          "fp": 159,
+          "fn": 795
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.502203483440762,
+          "sensitivity": 0.004862236628849271,
+          "specificity": 0.9995447302526748,
+          "tp": 3,
+          "tn": 4391,
+          "fp": 2,
+          "fn": 614
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5251513895309179
+    },
+    {
+      "epoch": 80,
+      "train_mse": 0.7440622098050907,
+      "MSE": 0.7182830572128296,
+      "RMSE": 0.8475158153172303,
+      "CI": 0.6524550914764404,
+      "rm2": 0.10457288216846959,
+      "Pearson": 0.32384539746439583,
+      "Spearman": 0.2995787248576375,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6260576334697652,
+        "6": 0.5506032741575423,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6260576334697652,
+          "sensitivity": 0.4493322859387274,
+          "specificity": 0.8027829810008028,
+          "tp": 572,
+          "tn": 3000,
+          "fp": 737,
+          "fn": 701
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5506032741575423,
+          "sensitivity": 0.14130434782608695,
+          "specificity": 0.9599022004889975,
+          "tp": 130,
+          "tn": 3926,
+          "fp": 164,
+          "fn": 790
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5252372725181867
+    },
+    {
+      "epoch": 85,
+      "train_mse": 0.7401945291260283,
+      "MSE": 0.7197381854057312,
+      "RMSE": 0.8483738476672482,
+      "CI": 0.6542516350746155,
+      "rm2": 0.10370910883350679,
+      "Pearson": 0.32219806559586656,
+      "Spearman": 0.3027492842986193,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6319981014045865,
+        "6": 0.5703478792388647,
+        "6.5": 0.5051035222161675,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6319981014045865,
+          "sensitivity": 0.5420267085624509,
+          "specificity": 0.721969494246722,
+          "tp": 690,
+          "tn": 2698,
+          "fp": 1039,
+          "fn": 583
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5703478792388647,
+          "sensitivity": 0.20108695652173914,
+          "specificity": 0.9396088019559902,
+          "tp": 185,
+          "tn": 3843,
+          "fp": 247,
+          "fn": 735
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5051035222161675,
+          "sensitivity": 0.011345218800648298,
+          "specificity": 0.9988618256316868,
+          "tp": 7,
+          "tn": 4388,
+          "fp": 5,
+          "fn": 610
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5296356432656598
+    },
+    {
+      "epoch": 90,
+      "train_mse": 0.7445371377444315,
+      "MSE": 0.7250394225120544,
+      "RMSE": 0.8514924676778147,
+      "CI": 0.6530680060386658,
+      "rm2": 0.10225046703845694,
+      "Pearson": 0.32195589010976305,
+      "Spearman": 0.3003918695820509,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6323740577705251,
+        "6": 0.5888141809290954,
+        "6.5": 0.502203483440762,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6323740577705251,
+          "sensitivity": 0.5687352710133543,
+          "specificity": 0.696012844527696,
+          "tp": 724,
+          "tn": 2601,
+          "fp": 1136,
+          "fn": 549
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5888141809290954,
+          "sensitivity": 0.25,
+          "specificity": 0.9276283618581908,
+          "tp": 230,
+          "tn": 3794,
+          "fp": 296,
+          "fn": 690
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.502203483440762,
+          "sensitivity": 0.004862236628849271,
+          "specificity": 0.9995447302526748,
+          "tp": 3,
+          "tn": 4391,
+          "fp": 2,
+          "fn": 614
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5319131031629117
+    },
+    {
+      "epoch": 95,
+      "train_mse": 0.7466772203578682,
+      "MSE": 0.7267387509346008,
+      "RMSE": 0.8524897365567522,
+      "CI": 0.6490734219551086,
+      "rm2": 0.10499953631251016,
+      "Pearson": 0.3241128361445962,
+      "Spearman": 0.294697094900909,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6192417558139754,
+        "6": 0.541050547464654,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6192417558139754,
+          "sensitivity": 0.39984289080911234,
+          "specificity": 0.8386406208188386,
+          "tp": 509,
+          "tn": 3134,
+          "fp": 603,
+          "fn": 764
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.541050547464654,
+          "sensitivity": 0.11413043478260869,
+          "specificity": 0.9679706601466993,
+          "tp": 105,
+          "tn": 3959,
+          "fp": 131,
+          "fn": 815
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5228989004683756
+    },
+    {
+      "epoch": 100,
+      "train_mse": 0.7412127718240201,
+      "MSE": 0.7179551720619202,
+      "RMSE": 0.8473223542795978,
+      "CI": 0.6535848379135132,
+      "rm2": 0.10380518365078469,
+      "Pearson": 0.32421061556401076,
+      "Spearman": 0.3012418124747608,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.6270032525428293,
+        "6": 0.5890586797066015,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.6270032525428293,
+          "sensitivity": 0.47289866457187746,
+          "specificity": 0.7811078405137811,
+          "tp": 602,
+          "tn": 2919,
+          "fp": 818,
+          "fn": 671
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5890586797066015,
+          "sensitivity": 0.25,
+          "specificity": 0.928117359413203,
+          "tp": 230,
+          "tn": 3796,
+          "fp": 294,
+          "fn": 690
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5308659903213473
+    }
+  ]
+}

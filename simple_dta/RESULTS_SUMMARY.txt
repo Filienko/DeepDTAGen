@@ -1,7 +1,7 @@
 ==========================================================================================
 RESULTS SUMMARY - simplified affinity-only DTA models (CNN & GNN)
 Best-epoch on held-out test split. Multi-seed rows = avg of 3 seeds (4221/7/13).
-Updated: 2026-07-04
+Updated: 2026-07-06
 ==========================================================================================
 
 HOW TO READ A ROW
@@ -131,46 +131,67 @@ are shown as '-' and skipped in the mean.
 ------------------------------------------------------------------------------------------
 Davis
 ------------------------------------------------------------------------------------------
-Run (arch / params)                                   5      5.5    6      6.5    7      7.5    8      8.5    MEAN 
-----------------------------------------------------  -----  -----  -----  -----  -----  -----  -----  -----  -----
-DeepDTAGen  [REFERENCE TARGET, within 2pp]            0.980  0.870  0.850  0.830  0.800  0.770  0.750  0.710  0.820
-REG B c3-dilated 800K d0.1 wd0 [balacc-sel] **BEST**  -      0.853  0.869  0.859  0.848  0.853  0.818  0.836  0.848
-REG B c3-dilated 800K d0.2 wd0 [balacc-sel]           -      0.849  0.855  0.848  0.808  0.815  0.789  0.747  0.816
-CNN t1 32/32 h1536L1  457K                            -      0.863  0.857  0.828  0.818  0.790  0.767  0.724  0.807
-REG A t4-proj32 267K d0.1 wd0 [balacc-sel]            -      0.858  0.849  0.819  0.783  0.774  0.740  0.742  0.795
-CNN t4 proj32 h1536L1  267K                           -      0.857  0.839  0.813  0.788  0.761  0.751  0.737  0.792
-REG B c3-dilated 800K d0.3 wd1e4 [balacc-sel]         -      0.853  0.827  0.804  0.796  0.791  0.771  0.694  0.791
-CNN c5 inverted  614K                                 -      0.851  0.824  0.819  0.801  0.773  0.750  0.718  0.791
-CNN c2 deep-prot 16-32/->128  909K                    -      0.862  0.831  0.820  0.786  0.789  0.746  0.700  0.791
-REG B c3-dilated 800K d0.2 wd1e4 [balacc-sel]         -      0.855  0.853  0.832  0.793  0.769  0.752  0.676  0.790
-CNN t3 leandrug h1024L2  800K                         -      0.853  0.823  0.814  0.794  0.768  0.747  0.712  0.787
-REG B c3-dilated 800K d0.3 wd0 [balacc-sel]           -      0.852  0.815  0.804  0.794  0.782  0.733  0.712  0.785
-CNN base 32-64-96 h1024L2  882K                       -      0.855  0.833  0.816  0.789  0.761  0.736  0.688  0.783
-CNN base  h1024L1  358K                               -      0.856  0.839  0.813  0.770  0.755  0.725  0.698  0.779
-GNN full-94 gcn128  903K                              -      0.840  0.833  0.812  0.762  0.755  0.732  0.717  0.779
-CNN c4 flat 32/32/32  647K                            -      0.851  0.827  0.810  0.786  0.731  0.723  0.700  0.775
-CNN t3 leandrug h1536L1  351K                         -      0.856  0.830  0.807  0.772  0.728  0.716  0.688  0.771
-REG A t4-proj32 267K d0.3 wd0 [balacc-sel]            -      0.846  0.843  0.814  0.774  0.752  0.709  0.658  0.771
-CNN c1 shallow-drug 16-32  778K                       -      0.854  0.826  0.801  0.770  0.752  0.716  0.670  0.770
-CNN t4 proj32 h1024L2  758K                           -      0.850  0.818  0.808  0.776  0.757  0.713  0.658  0.768
-CNN c3 dilated-prot(1,2,4)  800K                      -      0.851  0.816  0.793  0.783  0.757  0.693  0.676  0.767
-CNN t2 maxmean h1024L2  784K                          -      0.834  0.812  0.792  0.773  0.769  0.705  0.682  0.767
-GNN small12 gcn32  736K                               -      0.838  0.815  0.794  0.765  0.745  0.714  0.685  0.765
-REG A t4-proj32 267K d0.2 wd0 [balacc-sel]            -      0.851  0.810  0.791  0.752  0.734  0.733  0.676  0.764
-CNN t2 maxmean h1536L1  359K                          -      0.845  0.817  0.795  0.751  0.743  0.702  0.688  0.763
-REG A t4-proj32 267K d0.3 wd1e4 [balacc-sel]          -      0.835  0.822  0.793  0.744  0.728  0.713  0.670  0.758
-REG A t4-proj32 267K d0.2 wd1e4 [balacc-sel]          -      0.841  0.824  0.790  0.753  0.736  0.681  0.651  0.754
-CNN base  h512  390K                                  -      0.842  0.809  0.768  0.737  0.717  0.693  0.664  0.747
-GNN tiny4 gcn24  726K                                 -      0.832  0.786  0.741  0.722  0.704  0.657  0.646  0.727
-GNN tiny4 gcn32  735K                                 -      0.824  0.791  0.748  0.712  0.680  0.652  0.639  0.721
-GNN small12 gcn24  726K                               -      0.816  0.777  0.737  0.702  0.673  0.624  0.621  0.707
-[ABLATION] no-dilation 800K balacc-sel (fills 2x2)    -      0.754  0.773  0.748  0.712  0.646  0.612  0.614  0.694
-GNN small12 gcn16  717K                               -      0.806  0.764  0.715  0.688  0.653  0.613  0.591  0.690
-GNN small12 gcn12  712K                               -      0.785  0.758  0.704  0.677  0.673  0.629  0.566  0.685
-WINNER dilated 800K seed7                             -      0.774  0.775  0.710  0.648  0.604  0.576  0.530  0.660
-cfgA-267K + protDil[1,2,3]                            -      0.742  0.778  0.703  0.647  0.585  0.540  0.505  0.643
-WINNER dilated 800K seed13                            -      0.772  0.717  0.668  0.635  0.605  0.547  0.512  0.636
-cfgA-367K + protDil[1,2,3,5] 4-layer                  -      0.693  0.761  0.682  0.585  0.532  0.506  0.506  0.609
+Run (arch / params)                                                                5      5.5    6      6.5    7      7.5    8      8.5    MEAN 
+---------------------------------------------------------------------------------  -----  -----  -----  -----  -----  -----  -----  -----  -----
+DeepDTAGen  [REFERENCE TARGET, within 2pp]                                         0.980  0.870  0.850  0.830  0.800  0.770  0.750  0.710  0.820
+REG B c3-dilated 800K d0.1 wd0 [balacc-sel] **BEST**                               -      0.853  0.869  0.859  0.848  0.853  0.818  0.836  0.848
+stable 882K pool=MAX [balacc-sel]                                                  -      0.864  0.860  0.849  0.843  0.834  0.816  0.820  0.841
+stable embed256  943K                                                              -      0.871  0.864  0.853  0.841  0.836  0.794  0.783  0.834
+[ABLATION] no-dilation 800K balacc-sel (fills 2x2)                                 -      0.863  0.871  0.847  0.834  0.821  0.824  0.759  0.831
+drug16-12-8 + prot32-64-96 + h1536L1  282K                                         -      0.833  0.876  0.865  0.840  0.806  0.788  0.777  0.827
+WINNER dilated 800K seed13                                                         -      0.858  0.861  0.848  0.825  0.824  0.796  0.748  0.823
+stable kern drug3/prot6  846K                                                      -      0.860  0.856  0.845  0.824  0.805  0.766  0.773  0.818
+stable kern drug6/prot12  956K                                                     -      0.869  0.860  0.850  0.820  0.817  0.783  0.724  0.817
+REG B c3-dilated 800K d0.2 wd0 [balacc-sel]                                        -      0.849  0.855  0.848  0.808  0.815  0.789  0.747  0.816
+stable embed64  852K                                                               -      0.849  0.852  0.844  0.811  0.793  0.772  0.741  0.809
+stable ch 48-96-144  1.13M                                                         -      0.863  0.832  0.817  0.797  0.796  0.781  0.772  0.808
+CNN t1 32/32 h1536L1  457K                                                         -      0.863  0.857  0.828  0.818  0.790  0.767  0.724  0.807
+WINNER dilated 800K seed7                                                          -      0.862  0.847  0.833  0.790  0.804  0.773  0.718  0.804
+stable ch 24-48-72  778K                                                           -      0.862  0.830  0.824  0.801  0.789  0.753  0.730  0.798
+REG A t4-proj32 267K d0.1 wd0 [balacc-sel]                                         -      0.858  0.849  0.819  0.783  0.774  0.740  0.742  0.795
+cfgA-267K + protDil[1,2,3]                                                         -      0.854  0.837  0.808  0.791  0.773  0.756  0.736  0.793
+CNN t4 proj32 h1536L1  267K                                                        -      0.857  0.839  0.813  0.788  0.761  0.751  0.737  0.792
+REG B c3-dilated 800K d0.3 wd1e4 [balacc-sel]                                      -      0.853  0.827  0.804  0.796  0.791  0.771  0.694  0.791
+CNN c5 inverted  614K                                                              -      0.851  0.824  0.819  0.801  0.773  0.750  0.718  0.791
+CNN c2 deep-prot 16-32/->128  909K                                                 -      0.862  0.831  0.820  0.786  0.789  0.746  0.700  0.791
+cfgA-267K + drug+protDil[1,2,3]                                                    -      0.858  0.836  0.814  0.783  0.758  0.753  0.730  0.791
+REG B c3-dilated 800K d0.2 wd1e4 [balacc-sel]                                      -      0.855  0.853  0.832  0.793  0.769  0.752  0.676  0.790
+cfgA-267K + drugDil[1,2,3]                                                         -      0.854  0.835  0.821  0.796  0.768  0.743  0.712  0.790
+CNN t3 leandrug h1024L2  800K                                                      -      0.853  0.823  0.814  0.794  0.768  0.747  0.712  0.787
+REG B c3-dilated 800K d0.3 wd0 [balacc-sel]                                        -      0.852  0.815  0.804  0.794  0.782  0.733  0.712  0.785
+CNN base 32-64-96 h1024L2  882K                                                    -      0.855  0.833  0.816  0.789  0.761  0.736  0.688  0.783
+stable 882K pool=MEAN [balacc-sel]                                                 -      0.840  0.830  0.792  0.756  0.762  0.749  0.735  0.781
+cfgA-367K + protDil[1,2,3,11] 4-layer                                              -      0.855  0.830  0.806  0.777  0.777  0.744  0.676  0.780
+CNN base  h1024L1  358K                                                            -      0.856  0.839  0.813  0.770  0.755  0.725  0.698  0.779
+GNN full-94 gcn128  903K                                                           -      0.840  0.833  0.812  0.762  0.755  0.732  0.717  0.779
+CNN c4 flat 32/32/32  647K                                                         -      0.851  0.827  0.810  0.786  0.731  0.723  0.700  0.775
+CNN t3 leandrug h1536L1  351K                                                      -      0.856  0.830  0.807  0.772  0.728  0.716  0.688  0.771
+REG A t4-proj32 267K d0.3 wd0 [balacc-sel]                                         -      0.846  0.843  0.814  0.774  0.752  0.709  0.658  0.771
+CNN c1 shallow-drug 16-32  778K                                                    -      0.854  0.826  0.801  0.770  0.752  0.716  0.670  0.770
+cfgA-367K + protDil[1,2,3,5] 4-layer                                               -      0.839  0.809  0.786  0.763  0.755  0.737  0.700  0.770
+CNN t4 proj32 h1024L2  758K                                                        -      0.850  0.818  0.808  0.776  0.757  0.713  0.658  0.768
+CNN c3 dilated-prot(1,2,4)  800K                                                   -      0.851  0.816  0.793  0.783  0.757  0.693  0.676  0.767
+CNN t2 maxmean h1024L2  784K                                                       -      0.834  0.812  0.792  0.773  0.769  0.705  0.682  0.767
+GNN small12 gcn32  736K                                                            -      0.838  0.815  0.794  0.765  0.745  0.714  0.685  0.765
+REG A t4-proj32 267K d0.2 wd0 [balacc-sel]                                         -      0.851  0.810  0.791  0.752  0.734  0.733  0.676  0.764
+CNN t2 maxmean h1536L1  359K                                                       -      0.845  0.817  0.795  0.751  0.743  0.702  0.688  0.763
+REG A t4-proj32 267K d0.3 wd1e4 [balacc-sel]                                       -      0.835  0.822  0.793  0.744  0.728  0.713  0.670  0.758
+REG A t4-proj32 267K d0.2 wd1e4 [balacc-sel]                                       -      0.841  0.824  0.790  0.753  0.736  0.681  0.651  0.754
+CNN base  h512  390K                                                               -      0.842  0.809  0.768  0.737  0.717  0.693  0.664  0.747
+[RULE v2] drug + 5-motif PWM scan (artifact-filtered)  687K seed4221               -      0.807  0.775  0.744  0.736  0.726  0.677  0.688  0.736
+[RULE v2] drug + 5-motif PWM scan (artifact-filtered)  687K (avg seed 4221/7)      -      0.805  0.779  0.748  0.733  0.717  0.679  0.670  0.733
+GNN tiny4 gcn24  726K                                                              -      0.832  0.786  0.741  0.722  0.704  0.657  0.646  0.727
+[RULE] drug + 5-motif PWM scan (N-TERM ARTIFACT)  687K (avg seed 4221/7)           -      0.801  0.767  0.748  0.712  0.695  0.675  0.661  0.723
+GNN tiny4 gcn32  735K                                                              -      0.824  0.791  0.748  0.712  0.680  0.652  0.639  0.721
+[RULE] drug + 5-motif PWM scan (N-TERM ARTIFACT, see EXPERIMENTS 9.4)  687K s4221  -      0.807  0.763  0.742  0.704  0.698  0.653  0.652  0.717
+GNN small12 gcn24  726K                                                            -      0.816  0.777  0.737  0.702  0.673  0.624  0.621  0.707
+GNN small12 gcn16  717K                                                            -      0.806  0.764  0.715  0.688  0.653  0.613  0.591  0.690
+GNN small12 gcn12  712K                                                            -      0.785  0.758  0.704  0.677  0.673  0.629  0.566  0.685
+[ABLATION] drug-tower-only (no protein info)  682K seed4221                        -      0.701  0.704  0.606  0.573  0.543  0.500  0.500  0.589
+[ABLATION] drug-tower-only  682K (avg seed 4221/7)                                 -      0.699  0.697  0.590  0.573  0.543  0.500  0.500  0.586
+[ABLATION] protein-tower-only (no drug info)  726K seed4221                        -      0.626  0.595  0.568  0.500  0.500  0.500  0.500  0.541
+[ABLATION] protein-tower-only  726K (avg seed 4221/7)                              -      0.625  0.597  0.552  0.500  0.500  0.500  0.500  0.539
+[FLOOR] mean-affinity baseline (no model, no drug, no protein)                     -      0.500  0.500  0.500  0.500  0.500  0.500  0.500  0.500
 
 ------------------------------------------------------------------------------------------
 KIBA
@@ -221,4 +242,56 @@ BOTTOM LINE
    lever was selecting the checkpoint by balAcc. The MPC-ideal 267K model
    (regA_d1_wd0) lands balMean 0.795, level with DeepDTAGen and within 2pp
    everywhere (beats it at 8.5: .74 vs .71).
+6. BATCH 2026-07-04 (17 runs, all balAcc-selected). Key conclusions:
+   a. A1 ABLATION resolves the confound: the missing 2x2 cell (no-dilation +
+      balAcc-sel) = 0.831, vs no-dil+MSE-sel 0.787, dil+MSE-sel 0.767,
+      dil+balAcc-sel 0.848. => balAcc-CHECKPOINT-SELECTION is the real lever
+      (+0.04 to +0.08); DILATION adds only ~+0.017 on top (and HURT under
+      MSE-sel). The 0.848 winner was mostly selection, not dilation.
+   b. WINNER across seeds is noisy: 0.848(4221)/0.804(s7)/0.823(s13) => the
+      true value is ~0.82 +/- 0.02, not a reliable 0.848. Still within target.
+   c. POOLING: same stable config, MAX=0.841 vs MEAN=0.781 (-6pp). Mean pool
+      is cheaper in MPC but costs real balAcc on Davis -- a genuine tradeoff.
+   d. Config-A (267-367K) + dilation (coprime [1,2,3]/[1,2,3,5]/[1,2,3,11],
+      drug and/or protein tower) all land ~0.77-0.79; dilation did NOT lift
+      the small model, and the coprime variants were within noise of each other.
+   e. Best of batch = stable 882K pool=MAX 0.841 (essentially ties the winner);
+      stable embed256 0.834; drug16-12-8 h1536 282K 0.827 (tiny but MSE 0.326).
+7. TOWER-ABLATION + PROTEIN-TOWER INTERPRETABILITY (2026-07-06). Full writeup:
+   EXPERIMENTS.md section 9. Answers: how important is each modality alone, and
+   can the learned protein CNN be replaced by a hand-coded rule?
+   a. MODALITY ABLATION (retrain a single tower from scratch, not just zero an
+      input): drug-tower-only (no protein at all) = balAcc 0.586, MSE ~0.69 --
+      clears the mean-affinity floor (0.500/0.80) by a lot but nowhere near the
+      full model (0.841/0.267). protein-tower-only (no drug at all) = balAcc
+      0.539, MSE ~0.75 -- barely above the floor. On Davis, DRUG IDENTITY alone
+      carries far more signal than PROTEIN IDENTITY alone.
+   b. INTERPRETABILITY: single-channel knockout on the protein tower's final
+      (96-channel) conv layer, then motif extraction via argmax-position under
+      max-pool + the exact receptive-field formula RF=(kernel-1)*sum(dilations)+1.
+      The top-ranked channels on TWO different checkpoints (plain 882K and
+      [1,2,4]-dilated 800K) independently rediscovered real, textbook kinase
+      catalytic motifs (HRD box, DFG box, APE motif) with zero biological priors.
+   c. TWO BUGS CAUGHT before trusting the interpretability numbers -- both real,
+      both worth remembering: (i) scoring the rare/ambiguous residue code 'X'
+      against its true background frequency (~5e-6) let log-odds blow up from
+      pseudocounts alone -- fixed by restricting PWM scoring to the 20 standard
+      amino acids. (ii) 4 of 5 fitted PWMs were contaminated by an N-terminal/
+      tag-region artifact: 53-84% of test proteins' 'best-matching window' for
+      those channels sat at literal sequence position 0 (every protein starts
+      with Met + a similar tag-like region) -- fixed via --min-window-pos to
+      drop boundary-adjacent hits. Side effect: channel 74, the single highest-
+      knockout-importance channel, only has 47 genuine non-artifact hits (vs 246
+      for channel 84) -- its importance may be partly a shortcut, not biology.
+   d. RULE-BASED REPLACEMENT (the payoff): swap the ENTIRE learned protein CNN
+      for just 5 fixed PWM motif-match scores (drug tower still learned). Result
+      (avg 2 seeds): balAcc 0.733 (MSE 0.38) with the artifact FIXED, vs 0.723
+      contaminated, vs 0.841 for the full 96-channel learned tower, vs 0.586
+      drug-only. => 5 hand-scannable motifs recover ~58% of the drug-only-to-
+      full-model gap, at 687K params (vs 882K) with NO learned protein-side
+      compute at all -- just a sliding-window scan. Cleaned-PWM version beats
+      the contaminated one, confirming the N-terminal artifact was net noise.
+   e. STILL OPEN: whether the 96 protein-tower channels are mostly redundant
+      with each other or genuinely mostly unused (deferred by request); whether
+      the drug/protein balance shifts on KIBA (4x more data, less protein reuse).
 

@@ -1,0 +1,15 @@
+# =============================================================================
+# BATCH launched 2026-07-06: tower-ablation study (drug-only vs protein-only vs
+# full model), answering "how important is each modality on its own?".
+# Full rationale: EXPERIMENTS.md section 9. Davis, 100 epochs, balAcc-selected,
+# dropout 0.1, wd 0 (regularization already ruled out as unhelpful).
+# --ablate protein => drug tower survives alone (cheap: ~6s/epoch, ~10min total)
+# --ablate drug     => protein tower survives alone (expensive: ~107s/epoch, ~3hr)
+# Reference points already computed (no training needed):
+#   full model (both towers)   cnn_davis_stable_pool_max   balacc_mean=0.841
+#   mean-affinity floor        mean_baseline_davis         balacc_mean=0.500
+# =============================================================================
+cnn_davis_ablate_drugtower_only|--model cnn --dataset davis --epochs 100 --eval-interval 5 --ablate protein --select-metric balacc --seed 4221 --tag-suffix _ablate_drugtower_only
+cnn_davis_ablate_prottower_only|--model cnn --dataset davis --epochs 100 --eval-interval 5 --ablate drug --select-metric balacc --seed 4221 --tag-suffix _ablate_prottower_only
+cnn_davis_ablate_drugtower_only_s7|--model cnn --dataset davis --epochs 100 --eval-interval 5 --ablate protein --select-metric balacc --seed 7 --tag-suffix _ablate_drugtower_only_s7
+cnn_davis_ablate_prottower_only_s7|--model cnn --dataset davis --epochs 100 --eval-interval 5 --ablate drug --select-metric balacc --seed 7 --tag-suffix _ablate_prottower_only_s7
