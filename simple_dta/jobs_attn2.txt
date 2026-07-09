@@ -1,0 +1,53 @@
+# =============================================================================
+# BATCH 2: attention/transformer architectures, round 2 -- prompted by the
+# question "did you think about GCN (not GAT) -> attention, or raw graph
+# features straight into attention with no message passing at all?"
+# Davis, 100 epochs, balAcc-selected. Full rationale: EXPERIMENTS.md section 11.
+#
+# logtag|args
+# -----------------------------------------------------------------------------
+# F: plain GCNConv drug tower (no attention in the message passing at all,
+#    same family as GNNDTA) fed into bilateral cross-attention fusion with the
+#    protein CNN tower. Isolates whether GAT's content-based edge weighting
+#    (configs C/C2) is what helps, or whether just having a per-atom sequence
+#    to cross-attend against (regardless of which graph conv produced it) is
+#    the real driver. linear attn -- this combination is otherwise identical
+#    in cost class to D (cross-attn, linear), just with gnn instead of cnn drug.
+attn_davis_F_gnn_crossfusion|--model attn --drug-encoder gnn --protein-encoder cnn --fusion cross --attn-kind linear --dataset davis --epochs 100 --select-metric balacc --tag-suffix _F_gnn_crossfusion
+
+# G1: Graphormer-style drug tower -- NO message passing at all. Raw per-atom
+#     feature vectors are projected to embed_dim and self-attend directly
+#     against every other atom (drug graphs are tiny, <100 atoms, so full
+#     O(n^2) softmax attention is cheap). Bond/edge features enter only as an
+#     additive per-head bias on the attention scores (true Graphormer edge
+#     encoding), not through any graph convolution. Fed into the same bilateral
+#     cross-attention fusion with the protein CNN tower that's working well in
+#     A/D/E. "Best shot" sizing: 256-dim, 8 heads, 4 layers (2x the width and
+#     2x the depth of every other attention component in this project) --
+#     deliberately sized for accuracy, not MPC efficiency (see section 11).
+attn_davis_G1_graphformer_cross|--model attn --drug-encoder graphformer --protein-encoder cnn --fusion cross --use-edge-feats --attn-kind softmax --drug-attn-dim 256 --drug-attn-heads 8 --drug-attn-layers 4 --attn-dim 256 --attn-heads 8 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _G1_graphformer_cross
+
+# G2: same idea as G1, second (larger) hyperparameter set -- tests whether
+#     more capacity keeps helping or has already saturated. 512-dim, 8 heads,
+#     6 layers; ~15.5M params (4x G1, ~17x the CNN baseline) -- explicitly
+#     "too large for MPC, interesting in-the-clear result in its own right"
+#     per the user's request.
+attn_davis_G2_graphformer_cross_xlarge|--model attn --drug-encoder graphformer --protein-encoder cnn --fusion cross --use-edge-feats --attn-kind softmax --drug-attn-dim 512 --drug-attn-heads 8 --drug-attn-layers 6 --attn-dim 384 --attn-heads 8 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _G2_graphformer_cross_xlarge
+
+# G1-concat: same drug tower as G1 (256d/8h/4L, edge-feature bias) but plain
+#     concat fusion instead of cross-attention -- the "just swap the drug
+#     tower, nothing else" control. Expected to underperform G1 (per user's
+#     own prediction) since a Graphormer with no message passing likely needs
+#     the cross-attention step to actually relate atoms to protein residues;
+#     kept as a direct isolation of what cross-attention adds on top of this
+#     specific tower.
+attn_davis_G1_graphformer_concat|--model attn --drug-encoder graphformer --protein-encoder cnn --fusion concat --use-edge-feats --attn-kind softmax --drug-attn-dim 256 --drug-attn-heads 8 --drug-attn-layers 4 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _G1_graphformer_concat
+
+# H: the "no intra-drug processing at all" extreme -- raw per-atom feature
+#    vectors, linearly embedded (drug_attn_layers=0 skips every self-attention
+#    block), fed directly into the same bilateral cross-attention fusion as
+#    G1/G2/F. Identical to G1 in every other setting (drug_attn_dim=256,
+#    attn_dim=256, attn_heads=8) except layers: 0 vs G1's 4 -- isolates
+#    whether ANY intra-drug self-attention adds value over just letting
+#    cross-attention with the protein do all the work directly on raw atoms.
+attn_davis_H_rawnode_cross|--model attn --drug-encoder graphformer --protein-encoder cnn --fusion cross --drug-attn-dim 256 --drug-attn-layers 0 --drug-attn-heads 8 --attn-dim 256 --attn-heads 8 --attn-kind softmax --dataset davis --epochs 100 --select-metric balacc --tag-suffix _H_rawnode_cross

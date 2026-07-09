@@ -1,0 +1,41 @@
+# =============================================================================
+# BATCH: attention/transformer architectures (AttnDTA), first full runs.
+# Davis, 100 epochs, balAcc-selected (dropout 0.1, wd 0 -- already established
+# as the right regularization setting, see EXPERIMENTS.md section 8.3).
+# Full rationale + proposal-letter mapping: EXPERIMENTS.md section 10.
+#
+# IMPORTANT: --protein-encoder transformer MUST use --attn-kind linear (see
+# section 10.3) -- softmax self-attention over ~1200-residue proteins measured
+# ~75-80 min/epoch (impractical for 100 epochs) vs ~7-9 min/epoch with linear.
+#
+# logtag|args
+# -----------------------------------------------------------------------------
+# A: AttentionDTA-style bilateral cross-attention fusion on top of the existing
+#    CNN towers (no protein-side attention, so softmax is cheap here).
+attn_davis_A_crossfusion|--model attn --drug-encoder cnn --protein-encoder cnn --fusion cross --attn-kind softmax --dataset davis --epochs 100 --select-metric balacc --tag-suffix _A_crossfusion
+
+# D: same architecture as A, softmax-free linear attention (MPC-friendly ablation
+#    -- isolates what attn_kind costs/gains when it's not load-bearing for speed).
+attn_davis_D_crossfusion_linear|--model attn --drug-encoder cnn --protein-encoder cnn --fusion cross --attn-kind linear --dataset davis --epochs 100 --select-metric balacc --tag-suffix _D_crossfusion_linear
+
+# B: protein self-attention tower swap (replaces ProteinCNN with ProteinTransformer),
+#    concat fusion so this isolates the tower swap alone. linear attn REQUIRED (10.3).
+attn_davis_B_prottransformer|--model attn --drug-encoder cnn --protein-encoder transformer --fusion concat --attn-kind linear --dataset davis --epochs 100 --select-metric balacc --tag-suffix _B_prottransformer
+
+# C: GAT drug tower with bond (edge) features, concat fusion, CNN protein tower
+#    unchanged -- direct comparison vs GNNDTA's plain GCNConv (same node feats).
+attn_davis_C_gat_edgefeats|--model attn --drug-encoder gat --protein-encoder cnn --fusion concat --use-edge-feats --attn-kind softmax --dataset davis --epochs 100 --select-metric balacc --tag-suffix _C_gat_edgefeats
+
+# C2: same as C but WITHOUT edge features -- isolates what bond features add on
+#     top of the GAT-vs-GCN (content-based vs fixed aggregation) swap alone.
+attn_davis_C2_gat_noedgefeats|--model attn --drug-encoder gat --protein-encoder cnn --fusion concat --attn-kind softmax --dataset davis --epochs 100 --select-metric balacc --tag-suffix _C2_gat_noedgefeats
+
+# E: the composite idea -- graph-attention drug encoder (with edge feats) +
+#    protein self-attention + bilateral cross-attention fusion. Most novel/
+#    expensive config; linear attn required for the protein transformer.
+attn_davis_E_gat_transformer_cross|--model attn --drug-encoder gat --protein-encoder transformer --fusion cross --use-edge-feats --attn-kind linear --dataset davis --epochs 100 --select-metric balacc --tag-suffix _E_gat_transformer_cross
+
+# E2: E's cheaper sibling -- GAT+edge-feats drug encoder, CNN (not transformer)
+#     protein tower, but still cross-attention fusion. Isolates what "graph
+#     attention + cross-fusion" adds without also paying for protein self-attention.
+attn_davis_E2_gat_cross_cnnprot|--model attn --drug-encoder gat --protein-encoder cnn --fusion cross --use-edge-feats --attn-kind softmax --dataset davis --epochs 100 --select-metric balacc --tag-suffix _E2_gat_cross_cnnprot

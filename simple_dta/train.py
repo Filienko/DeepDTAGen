@@ -17,7 +17,7 @@ import torch
 import torch.nn as nn
 
 from metrics import all_metrics
-from models import CNNDTA, GNNDTA, count_params
+from models import CNNDTA, GNNDTA, AttnDTA, count_params
 
 SEED = 4221
 
@@ -28,8 +28,18 @@ def set_seed(seed=SEED):
     torch.cuda.manual_seed_all(seed)
 
 
-def build_loaders(model_kind, dataset, batch_size, featurizer="full"):
-    if model_kind == "cnn":
+def loader_kind_for(args):
+    """'cnn' (sequence dataset) or 'graph' (RDKit molecular-graph dataset) --
+    for --model attn this depends on --drug-encoder, not on --model itself."""
+    if args.model == "gnn":
+        return "graph"
+    if args.model == "attn" and args.drug_encoder != "cnn":
+        return "graph"
+    return "cnn"
+
+
+def build_loaders(loader_kind, dataset, batch_size, featurizer="full"):
+    if loader_kind == "cnn":
         from torch.utils.data import DataLoader
         from data import CNNDataset
         train_ds = CNNDataset(dataset, "train")
@@ -47,20 +57,20 @@ def build_loaders(model_kind, dataset, batch_size, featurizer="full"):
     return train_loader, test_loader
 
 
-def to_device(batch, model_kind, device):
-    if model_kind == "cnn":
+def to_device(batch, loader_kind, device):
+    if loader_kind == "cnn":
         xd, xt, y = batch
         return (xd.to(device), xt.to(device), None), y.to(device)
     batch = batch.to(device)
     return batch, batch.y.view(-1)
 
 
-def evaluate(model, loader, model_kind, device, dataset=None):
+def evaluate(model, loader, loader_kind, device, dataset=None):
     model.eval()
     preds, trues = [], []
     with torch.no_grad():
         for batch in loader:
-            inp, y = to_device(batch, model_kind, device)
+            inp, y = to_device(batch, loader_kind, device)
             preds.append(model(inp).cpu().numpy())
             trues.append(y.cpu().numpy())
     P = np.concatenate(preds).flatten()
@@ -70,7 +80,64 @@ def evaluate(model, loader, model_kind, device, dataset=None):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", choices=["cnn", "gnn"], required=True)
+    ap.add_argument("--model", choices=["cnn", "gnn", "attn"], required=True)
+    ap.add_argument("--drug-encoder", choices=["cnn", "gnn", "gat", "graphformer"], default="cnn",
+                    help="attn only: drug tower -- cnn=SmilesCNN, gnn=plain GCN "
+                         "(GNNDTA control, no attention in message passing), "
+                         "gat=GATv2 (content-based, edge-feature-aware message passing), "
+                         "graphformer=NO message passing at all -- raw per-atom features "
+                         "self-attend directly, bond features enter only as an additive "
+                         "attention-score bias (see DrugGraphTransformer)")
+    ap.add_argument("--protein-encoder", choices=["cnn", "transformer"], default="cnn",
+                    help="attn only: protein tower -- cnn=ProteinCNN, "
+                         "transformer=self-attention encoder (global RF from layer 1)")
+    ap.add_argument("--fusion", choices=["concat", "cross"], default="concat",
+                    help="attn only: concat=pool-then-concat (baseline-style), "
+                         "cross=bilateral cross-attention between towers before pooling "
+                         "(AttentionDTA-style interaction modeling)")
+    ap.add_argument("--attn-kind", choices=["softmax", "linear"], default="softmax",
+                    help="attn only: softmax=standard attention (fine for short "
+                         "sequences: drug SMILES, cross-attention fusion), "
+                         "linear=softmax-free linear attention (MPC-friendly, "
+                         "O(n) not O(n^2), no exp/divide). REQUIRED in practice "
+                         "for --protein-encoder transformer: measured ~75-80 "
+                         "min/epoch on Davis with softmax vs ~7 min/epoch with "
+                         "linear (the window flag masks results but doesn't cut "
+                         "the O(n^2) matmul, so it doesn't save this)")
+    ap.add_argument("--attn-dim", type=int, default=128,
+                    help="attn only: shared projection width used by cross-attention fusion")
+    ap.add_argument("--attn-heads", type=int, default=4,
+                    help="attn only: heads for the protein transformer AND cross-attention fusion")
+    ap.add_argument("--cross-direction", choices=["both", "drug2prot", "prot2drug"], default="both",
+                    help="fusion=cross only: both=bilateral (default, AttentionDTA-style), "
+                         "drug2prot=only drug queries protein (protein passes through unchanged), "
+                         "prot2drug=only protein queries drug (drug passes through unchanged). "
+                         "Unilateral directions build/run only one MultiHeadAttention instead of "
+                         "two -- roughly half the cross-attention params and compute, directly "
+                         "MPC-relevant if one direction turns out to dominate.")
+    ap.add_argument("--prot-attn-layers", type=int, default=2,
+                    help="attn only: number of self-attention blocks in the protein transformer")
+    ap.add_argument("--prot-attn-window", type=int, default=64,
+                    help="attn only: local-attention window for the protein transformer "
+                         "(caps O(n^2) cost over ~1000-1200 residue sequences); 0 = full attention")
+    ap.add_argument("--gat-dim", type=int, default=128,
+                    help="attn only: drug graph encoder (gnn/gat) hidden width per layer")
+    ap.add_argument("--gat-layers", type=int, default=2,
+                    help="attn only: drug graph encoder depth")
+    ap.add_argument("--gat-heads", type=int, default=4,
+                    help="attn only: GATv2 attention heads (drug_encoder=gat)")
+    ap.add_argument("--use-edge-feats", action="store_true",
+                    help="attn only, drug_encoder in {gat,graphformer}: condition attention on "
+                         "bond features (type/conjugation/ring/stereo) instead of connectivity "
+                         "alone (gat: via GATv2's edge_dim; graphformer: via an additive "
+                         "attention-score bias)")
+    ap.add_argument("--drug-attn-dim", type=int, default=256,
+                    help="attn only, drug_encoder=graphformer: embedding width for the "
+                         "raw-node-feature self-attention drug tower")
+    ap.add_argument("--drug-attn-heads", type=int, default=8,
+                    help="attn only, drug_encoder=graphformer: attention heads")
+    ap.add_argument("--drug-attn-layers", type=int, default=4,
+                    help="attn only, drug_encoder=graphformer: self-attention block depth")
     ap.add_argument("--dataset", choices=["davis", "kiba", "bindingdb"], required=True)
     ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--batch-size", type=int, default=256)
@@ -140,10 +207,25 @@ def main():
                f"gcn_layers={args.gcn_layers} embed_dim={args.embed_dim}"
                if args.model == "gnn" else f" | embed_dim={args.embed_dim}")
     ablate_note = f" | ablate={args.ablate}" if args.ablate != "none" else ""
+    attn_cfg = ""
+    if args.model == "attn":
+        attn_cfg = (f" | drug_enc={args.drug_encoder} prot_enc={args.protein_encoder} "
+                    f"fusion={args.fusion} attn_kind={args.attn_kind} attn_dim={args.attn_dim} "
+                    f"attn_heads={args.attn_heads}"
+                    + (f" cross_direction={args.cross_direction}" if args.fusion == "cross" else "")
+                    + (f" prot_attn_layers={args.prot_attn_layers} prot_attn_window={args.prot_attn_window}"
+                       if args.protein_encoder == "transformer" else "")
+                    + (f" gat_dim={args.gat_dim} gat_layers={args.gat_layers} gat_heads={args.gat_heads} "
+                       f"edge_feats={args.use_edge_feats}"
+                       if args.drug_encoder in ("gnn", "gat") else "")
+                    + (f" drug_attn_dim={args.drug_attn_dim} drug_attn_heads={args.drug_attn_heads} "
+                       f"drug_attn_layers={args.drug_attn_layers} edge_feats={args.use_edge_feats}"
+                       if args.drug_encoder == "graphformer" else ""))
     print(f"=== {tag} | device={device} | pool={args.pool} | head_dim={args.head_dim} "
-          f"| head_layers={args.head_layers} | seed={args.seed}{gnn_cfg}{ablate_note} ===")
+          f"| head_layers={args.head_layers} | seed={args.seed}{gnn_cfg}{ablate_note}{attn_cfg} ===")
 
-    train_loader, test_loader = build_loaders(args.model, args.dataset,
+    loader_kind = loader_kind_for(args)
+    train_loader, test_loader = build_loaders(loader_kind, args.dataset,
                                               args.batch_size, featurizer=args.node_feat)
 
     if args.model == "cnn":
@@ -159,13 +241,29 @@ def main():
                        drug_kernel=args.drug_kernel,
                        prot_kernel=args.prot_kernel,
                        ablate=args.ablate).to(device)
-    else:
+    elif args.model == "gnn":
         from data import FEATURIZERS
         node_feat_dim = FEATURIZERS[args.node_feat][1]
         model = GNNDTA(embed_dim=args.embed_dim, gcn_dim=args.gcn_dim,
                        gcn_layers=args.gcn_layers, node_feat_dim=node_feat_dim,
                        pool=args.pool, head_dim=args.head_dim,
                        head_layers=args.head_layers, dropout=args.dropout).to(device)
+    else:  # "attn"
+        from data import FEATURIZERS
+        node_feat_dim = FEATURIZERS[args.node_feat][1]
+        model = AttnDTA(drug_encoder=args.drug_encoder, protein_encoder=args.protein_encoder,
+                        fusion=args.fusion, attn_kind=args.attn_kind, attn_dim=args.attn_dim,
+                        attn_heads=args.attn_heads, prot_attn_layers=args.prot_attn_layers,
+                        prot_attn_window=args.prot_attn_window, gat_dim=args.gat_dim,
+                        gat_layers=args.gat_layers, gat_heads=args.gat_heads,
+                        use_edge_feats=args.use_edge_feats,
+                        drug_attn_dim=args.drug_attn_dim, drug_attn_heads=args.drug_attn_heads,
+                        drug_attn_layers=args.drug_attn_layers,
+                        node_feat_dim=node_feat_dim, cross_direction=args.cross_direction,
+                        embed_dim=args.embed_dim, num_filters=args.drug_filters,
+                        drug_kernel=args.drug_kernel, prot_kernel=args.prot_kernel,
+                        pool=args.pool, head_dim=args.head_dim, head_layers=args.head_layers,
+                        dropout=args.dropout).to(device)
     print(f"Trainable parameters: {count_params(model):,}")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
@@ -184,7 +282,7 @@ def main():
         running = 0.0
         n = 0
         for batch in train_loader:
-            inp, y = to_device(batch, args.model, device)
+            inp, y = to_device(batch, loader_kind, device)
             optimizer.zero_grad()
             pred = model(inp)
             loss = loss_fn(pred, y)
@@ -197,7 +295,7 @@ def main():
         train_mse = running / n
 
         if epoch % args.eval_interval == 0 or epoch == args.epochs:
-            m, G, P = evaluate(model, test_loader, args.model, device,
+            m, G, P = evaluate(model, test_loader, loader_kind, device,
                                dataset=args.dataset)
             history.append({"epoch": epoch, "train_mse": train_mse, **m})
             print(f"[{tag}] epoch {epoch:3d} | {dt:5.1f}s | train_mse {train_mse:.4f} "
@@ -229,6 +327,15 @@ def main():
         "ablate": args.ablate,
         "dropout": args.dropout,
         "weight_decay": args.weight_decay, "select_metric": args.select_metric,
+        "drug_encoder": args.drug_encoder, "protein_encoder": args.protein_encoder,
+        "fusion": args.fusion, "attn_kind": args.attn_kind, "attn_dim": args.attn_dim,
+        "attn_heads": args.attn_heads, "cross_direction": args.cross_direction,
+        "prot_attn_layers": args.prot_attn_layers,
+        "prot_attn_window": args.prot_attn_window, "gat_dim": args.gat_dim,
+        "gat_layers": args.gat_layers, "gat_heads": args.gat_heads,
+        "use_edge_feats": args.use_edge_feats,
+        "drug_attn_dim": args.drug_attn_dim, "drug_attn_heads": args.drug_attn_heads,
+        "drug_attn_layers": args.drug_attn_layers,
         "history": history,
     }
     with open(os.path.join(args.out_dir, f"{tag}_summary.json"), "w") as f:

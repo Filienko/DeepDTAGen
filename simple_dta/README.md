@@ -53,7 +53,45 @@ PROTEIN (amino-acid string) --> embed --> [Conv1d x3] --> global pool --> vector
 - More "chemically faithful," but in our experiments it is **consistently worse and larger**
   than the CNN (see §7). Kept for comparison and because graph structure may matter later.
 
-Shared building blocks (`models.py`): `ProteinCNN`, `SmilesCNN`, `PredictionHead`.
+### AttnDTA — attention/transformer variants (2026-07-06)
+One configurable model (`models.py`) spanning every attention-based architecture we've
+explored — a graph-attention (GATv2) drug encoder that can use bond features, a
+self-attention protein tower, and a bilateral cross-attention fusion step that lets drug
+and protein representations interact *before* pooling (instead of pool-then-concat). Each
+"proposal" is a flag combination, not a separate class. **Full design writeup, the
+proposal→flag mapping, and an important MPC-relevant finding (softmax attention over full
+protein sequences is ~11x too slow to train in practice — use the linear/softmax-free
+variant) are in `EXPERIMENTS.md` §10 — read that before touching this.**
+
+Shared building blocks (`models.py`): `ProteinCNN`, `SmilesCNN`, `PredictionHead`,
+`GraphAttnEncoder`, `_GCNStack`; attention primitives live in `attention.py`.
+
+**Round 2 (2026-07-07, `EXPERIMENTS.md` §11):** two more drug-encoder options —
+`gnn` + `fusion=cross` (plain GCN, no attention in the message passing, still
+cross-attended against the protein — a combination the code already supported
+but no job had used) and `graphformer` (Graphormer-style: **no message passing
+at all** — raw per-atom features self-attend directly, bond features enter
+only as an additive bias on the attention scores, via the new
+`DrugGraphTransformer` class). Sized deliberately large (up to 15.5M params)
+to give the "best shot" accuracy case a fair try, independent of MPC cost.
+
+**Final results, batches 1+2 (`EXPERIMENTS.md` §12.1):** cross-attention fusion
+beats concat fusion regardless of what produces the drug tower's per-token
+sequence — best is A (cnn+cnn, softmax cross-attn, 0.840 balAcc), followed by
+F (plain GCN+cnn, **linear**/softmax-free cross-attn, 0.831) and H (raw atoms,
+no self-attention, cross-attn, 0.826) — all above the DeepDTAGen reference
+(0.820). The Graphormer self-attention tower (G1/G2) collapsed to random
+guessing regardless of size (up to 15.5M params); isolated to the stacked
+self-attention itself, not cross-attention.
+
+**Batch 3, launched 2026-07-09 (`EXPERIMENTS.md` §12.2-12.3):** a new
+`--cross-direction {both,drug2prot,prot2drug}` flag makes cross-attention
+**unilateral** (builds only one attention block, not two) to test whether both
+directions are needed. Also added **J**: H's raw-atom tower + linear
+cross-attention — a **fully softmax-free** model, landing at 0.799 balAcc,
+the strongest MPC candidate found so far that has zero softmax anywhere.
+Partial results (some jobs still training): unilateral cross-attention costs
+~4pp vs bilateral (K1 drug→prot-only = 0.793 vs F's bilateral 0.831).
 
 ---
 
@@ -61,8 +99,9 @@ Shared building blocks (`models.py`): `ProteinCNN`, `SmilesCNN`, `PredictionHead
 
 | File | What it is |
 |---|---|
-| `models.py` | **The models.** `CNNDTA`, `GNNDTA`, and the shared `ProteinCNN` / `SmilesCNN` / `PredictionHead`. Start here to understand or change architecture. |
-| `data.py` | Loads the dataset CSVs from `../data/`, does the encoding: CNN = label-encode strings; GNN = RDKit molecule→graph. Also defines the atom featurizers (`full`=94-dim, `small`=12, `tiny`=4). |
+| `models.py` | **The models.** `CNNDTA`, `GNNDTA`, `AttnDTA`, and the shared `ProteinCNN` / `SmilesCNN` / `PredictionHead` / `GraphAttnEncoder`. Start here to understand or change architecture. |
+| `attention.py` | Attention building blocks used by `AttnDTA`: `MultiHeadAttention` (softmax + linear/softmax-free, optional Graphormer-style `attn_bias`), `ProteinTransformer`, `DrugGraphTransformer` (no-message-passing drug tower), `CrossAttentionFusion`, `PositionalEncoding`. See `EXPERIMENTS.md` §10-11. |
+| `data.py` | Loads the dataset CSVs from `../data/`, does the encoding: CNN = label-encode strings; GNN/GAT = RDKit molecule→graph (now with bond/edge features, `EDGE_FEATURE_DIM=11`). Also defines the atom featurizers (`full`=94-dim, `small`=12, `tiny`=4). |
 | `train.py` | **The training script / entry point.** Parses all the CLI flags, builds the model, trains, evaluates every few epochs, and saves the best checkpoint + predictions + a summary JSON. |
 | `metrics.py` | All evaluation metrics: MSE, CI, rm2, Pearson/Spearman, and **balanced accuracy** at each threshold (our target metric — see §6). |
 | `gen_results.py` | Regenerates `RESULTS_SUMMARY.txt` by re-scoring saved predictions. Run it after new experiments finish. |
@@ -70,7 +109,7 @@ Shared building blocks (`models.py`): `ProteinCNN`, `SmilesCNN`, `PredictionHead
 | `RESULTS_SUMMARY.txt` | Human-readable results table (open in `nano`/`vim`/any editor). Auto-generated by `gen_results.py`. |
 | `run_queue.sh` | Runs a batch of training jobs with bounded parallelism, fully detached (survives logout). |
 | `run_one.sh` | Convenience wrapper to launch a single detached run with logging. |
-| `jobs_batch_july.txt`, `jobs_tower_ablation.txt` | Example batch specs (one job per line, see §8). |
+| `jobs_batch_july.txt`, `jobs_tower_ablation.txt`, `jobs_attn.txt`, `jobs_attn2.txt`, `jobs_attn3.txt` | Example batch specs (one job per line, see §8). |
 | `mean_baseline.py` | Trivial floor: predicts the train-set mean affinity for every test row, no model at all. Useful sanity check for "is my model doing anything?" |
 | `interpret_protein_tower.py` | **Interpretability, no retraining.** Loads any existing checkpoint and (1) ranks the protein tower's channels by knockout — zero one channel, see how much test MSE gets worse; (2) extracts each top channel's most-activating real sequence window; (3) with `--save-pwm`, fits a proper position-weight-matrix per channel for use by `rule_features.py`. See §10. |
 | `rule_features.py` | Turns a raw protein string into a handful of fixed "does it match this motif" scores, using PWMs fit by `interpret_protein_tower.py`. No learned parameters. |
@@ -128,7 +167,16 @@ Check on it with `tail -f runs/cnn_davis_myrun.log` or `ps -C python -o pid,etim
 All flags are defined in `train.py`. Defaults in parentheses.
 
 **Which problem:**
-- `--model {cnn,gnn}` · `--dataset {davis,kiba,bindingdb}` (required)
+- `--model {cnn,gnn,attn}` · `--dataset {davis,kiba,bindingdb}` (required)
+- `attn` (AttnDTA) has its own knobs: `--drug-encoder {cnn,gnn,gat,graphformer}`,
+  `--protein-encoder {cnn,transformer}`, `--fusion {concat,cross}`,
+  `--attn-kind {softmax,linear}`, `--use-edge-feats`, `--attn-dim/-heads`,
+  `--prot-attn-layers/-window`, `--gat-dim/-layers/-heads`,
+  `--drug-attn-dim/-heads/-layers` (graphformer only), `--cross-direction
+  {both,drug2prot,prot2drug}` (unilateral cross-attention — builds only one
+  attention block, ~half the compute). See `EXPERIMENTS.md` §10-12
+  for what each proposal (A-K) maps to, and the important caveat that
+  `--protein-encoder transformer` needs `--attn-kind linear` to be practical.
 
 **Training:**
 - `--epochs` (100) · `--batch-size` (256) · `--lr` (1e-3)
@@ -273,6 +321,14 @@ highlights so far:
   the drug-only-to-full-model gap (0.586→0.733 vs. the full model's 0.841). Not a complete
   replacement, but strong evidence the tower's value is concentrated in a small, nameable set
   of motifs rather than spread diffusely across all 96 channels. See §10.
+- ✅ **Cross-attention fusion (AttnDTA) beats every concat-fusion config, and beats
+  DeepDTAGen's target.** Best is 0.840 balAcc (softmax cross-attn, cnn towers); a fully
+  **softmax-free** variant (linear cross-attn, no self-attention anywhere) still reaches
+  0.799 — the current best MPC candidate outside the CNN/GNN affinity-only family. See
+  `EXPERIMENTS.md` §12.
+- ❌ **Unstructured self-attention on the drug graph (no message passing) collapses to
+  random guessing**, at any size up to 15.5M params — small molecules need GCN/GAT's
+  locality prior, not full attention from scratch. See `EXPERIMENTS.md` §11-12.
 
 ---
 

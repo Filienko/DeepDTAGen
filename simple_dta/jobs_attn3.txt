@@ -1,0 +1,42 @@
+# =============================================================================
+# BATCH 3: validation + MPC-efficiency follow-up on batch 1/2 findings.
+# Goal (per project long-term goal): same accuracy, cheaper under MPC.
+# Key finding so far: cross-attention fusion is the winning ingredient
+# regardless of what produces the per-token sequence (CNN=A 0.840, GCN=F
+# 0.831, raw atoms=H 0.826 all beat/near the DeepDTAGen 0.820 target), while
+# GAT's extra machinery and protein self-attention help less, and Graphormer
+# self-attention (G1/G2) actively destabilizes training. Full leaderboard +
+# rationale: EXPERIMENTS.md section 12.
+#
+# logtag|args
+# -----------------------------------------------------------------------------
+# I: fills the missing quadrant of the {cnn,gnn} x {softmax,linear} cross-attn
+#    grid (have: cnn+softmax=A, cnn+linear=D, gnn+linear=F; missing gnn+softmax).
+#    Isolates whether GCN's strength under linear attn (F beating D by 4.3pp)
+#    holds/grows under full softmax attention too.
+attn_davis_I_gnn_cross_softmax|--model attn --drug-encoder gnn --protein-encoder cnn --fusion cross --attn-kind softmax --dataset davis --epochs 100 --select-metric balacc --tag-suffix _I_gnn_cross_softmax
+
+# J: the maximally MPC-cheap candidate -- H's raw-atom drug tower (zero
+#    self-attention, zero message passing) combined with LINEAR (softmax-free)
+#    cross-attention instead of H's softmax. If this holds close to H's 0.826,
+#    it's a fully softmax-free model (no exp/divide anywhere) that still beats
+#    most of the softmax-based competition -- the single most important result
+#    for the MPC goal specifically.
+attn_davis_J_rawnode_cross_linear|--model attn --drug-encoder graphformer --protein-encoder cnn --fusion cross --drug-attn-dim 256 --drug-attn-layers 0 --drug-attn-heads 8 --attn-dim 256 --attn-heads 8 --attn-kind linear --dataset davis --epochs 100 --select-metric balacc --tag-suffix _J_rawnode_cross_linear
+
+# F_s7: seed replication of F (current best fully-linear-attention candidate,
+#    0.831 mean balAcc, seed 4221) -- confirms the 4.3pp gap over D isn't seed
+#    noise before we treat "GCN + linear cross-attn" as the MPC-efficient
+#    reference point.
+attn_davis_F_s7_gnn_crossfusion|--model attn --drug-encoder gnn --protein-encoder cnn --fusion cross --attn-kind linear --seed 7 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _F_s7_gnn_crossfusion
+
+# K1/K2: unilateral cross-attention ablation (previously flagged, never run --
+# see memory pending-unilateral-cross-attn-ablation.md). Built on F's backbone
+# (gnn drug + cnn protein + linear attn) since that's the current best
+# MPC-efficient config: does the bilateral mechanism actually need BOTH
+# directions, or does one direction alone (half the cross-attention compute)
+# capture the gain? K1 = only drug queries protein (small graph reaching into
+# the long protein -- the direction the user predicted matters most). K2 =
+# only protein queries drug (reverse).
+attn_davis_K1_gnn_cross_linear_drug2prot|--model attn --drug-encoder gnn --protein-encoder cnn --fusion cross --attn-kind linear --cross-direction drug2prot --dataset davis --epochs 100 --select-metric balacc --tag-suffix _K1_gnn_cross_linear_drug2prot
+attn_davis_K2_gnn_cross_linear_prot2drug|--model attn --drug-encoder gnn --protein-encoder cnn --fusion cross --attn-kind linear --cross-direction prot2drug --dataset davis --epochs 100 --select-metric balacc --tag-suffix _K2_gnn_cross_linear_prot2drug

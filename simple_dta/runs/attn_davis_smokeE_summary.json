@@ -1,0 +1,249 @@
+{
+  "tag": "attn_davis_smokeE",
+  "model": "attn",
+  "dataset": "davis",
+  "epochs": 1,
+  "params": 1283073,
+  "mean_epoch_sec": 1870.3531568050385,
+  "total_train_sec": 1870.3531568050385,
+  "best": {
+    "epoch": 1,
+    "MSE": 0.8182473182678223,
+    "RMSE": 0.9045702395435206,
+    "CI": 0.574816107749939,
+    "rm2": 0.03646250801291952,
+    "Pearson": 0.19172144443551295,
+    "Spearman": 0.15257260245200677,
+    "balacc": {
+      "5": NaN,
+      "5.5": 0.5526841308576198,
+      "6": 0.5,
+      "6.5": 0.5,
+      "7": 0.5,
+      "7.5": 0.5,
+      "8": 0.5,
+      "8.5": 0.5
+    },
+    "balacc_full": {
+      "5": {
+        "threshold": 5.0,
+        "bal_acc": NaN,
+        "sensitivity": 1.0,
+        "specificity": NaN,
+        "tp": 5010,
+        "tn": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "5.5": {
+        "threshold": 5.5,
+        "bal_acc": 0.5526841308576198,
+        "sensitivity": 0.14925373134328357,
+        "specificity": 0.9561145303719562,
+        "tp": 190,
+        "tn": 3573,
+        "fp": 164,
+        "fn": 1083
+      },
+      "6": {
+        "threshold": 6.0,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4090,
+        "fp": 0,
+        "fn": 920
+      },
+      "6.5": {
+        "threshold": 6.5,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4393,
+        "fp": 0,
+        "fn": 617
+      },
+      "7": {
+        "threshold": 7.0,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4593,
+        "fp": 0,
+        "fn": 417
+      },
+      "7.5": {
+        "threshold": 7.5,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4753,
+        "fp": 0,
+        "fn": 257
+      },
+      "8": {
+        "threshold": 8.0,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4866,
+        "fp": 0,
+        "fn": 144
+      },
+      "8.5": {
+        "threshold": 8.5,
+        "bal_acc": 0.5,
+        "sensitivity": 0.0,
+        "specificity": 1.0,
+        "tp": 0,
+        "tn": 4928,
+        "fp": 0,
+        "fn": 82
+      }
+    },
+    "balacc_mean": 0.5075263044082314
+  },
+  "pool": "max",
+  "head_dim": 1024,
+  "head_layers": 2,
+  "seed": 4221,
+  "node_feat": "full",
+  "gcn_dim": 128,
+  "gcn_layers": 2,
+  "embed_dim": 128,
+  "drug_filters": 32,
+  "prot_filters": 32,
+  "proj_dim": 0,
+  "drug_channels": "",
+  "prot_channels": "",
+  "drug_dilations": "",
+  "prot_dilations": "",
+  "drug_kernel": 4,
+  "prot_kernel": 8,
+  "ablate": "none",
+  "dropout": 0.1,
+  "weight_decay": 0.0,
+  "select_metric": "mse",
+  "drug_encoder": "gat",
+  "protein_encoder": "transformer",
+  "fusion": "cross",
+  "attn_kind": "linear",
+  "attn_dim": 128,
+  "attn_heads": 4,
+  "prot_attn_layers": 2,
+  "prot_attn_window": 64,
+  "gat_dim": 128,
+  "gat_layers": 2,
+  "gat_heads": 4,
+  "use_edge_feats": true,
+  "history": [
+    {
+      "epoch": 1,
+      "train_mse": 1.353480084056626,
+      "MSE": 0.8182473182678223,
+      "RMSE": 0.9045702395435206,
+      "CI": 0.574816107749939,
+      "rm2": 0.03646250801291952,
+      "Pearson": 0.19172144443551295,
+      "Spearman": 0.15257260245200677,
+      "balacc": {
+        "5": NaN,
+        "5.5": 0.5526841308576198,
+        "6": 0.5,
+        "6.5": 0.5,
+        "7": 0.5,
+        "7.5": 0.5,
+        "8": 0.5,
+        "8.5": 0.5
+      },
+      "balacc_full": {
+        "5": {
+          "threshold": 5.0,
+          "bal_acc": NaN,
+          "sensitivity": 1.0,
+          "specificity": NaN,
+          "tp": 5010,
+          "tn": 0,
+          "fp": 0,
+          "fn": 0
+        },
+        "5.5": {
+          "threshold": 5.5,
+          "bal_acc": 0.5526841308576198,
+          "sensitivity": 0.14925373134328357,
+          "specificity": 0.9561145303719562,
+          "tp": 190,
+          "tn": 3573,
+          "fp": 164,
+          "fn": 1083
+        },
+        "6": {
+          "threshold": 6.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4090,
+          "fp": 0,
+          "fn": 920
+        },
+        "6.5": {
+          "threshold": 6.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4393,
+          "fp": 0,
+          "fn": 617
+        },
+        "7": {
+          "threshold": 7.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4593,
+          "fp": 0,
+          "fn": 417
+        },
+        "7.5": {
+          "threshold": 7.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4753,
+          "fp": 0,
+          "fn": 257
+        },
+        "8": {
+          "threshold": 8.0,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4866,
+          "fp": 0,
+          "fn": 144
+        },
+        "8.5": {
+          "threshold": 8.5,
+          "bal_acc": 0.5,
+          "sensitivity": 0.0,
+          "specificity": 1.0,
+          "tp": 0,
+          "tn": 4928,
+          "fp": 0,
+          "fn": 82
+        }
+      },
+      "balacc_mean": 0.5075263044082314
+    }
+  ]
+}

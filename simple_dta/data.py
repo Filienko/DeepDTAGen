@@ -122,6 +122,28 @@ def atom_features(atom):
 NODE_FEATURE_DIM = 94  # length of atom_features() output (the "full" featurizer)
 
 
+# ---------------------------------------------------------------------------
+# Bond (edge) features -- previously unused: edge_index carried connectivity
+# only, no edge_attr, so every GNN here (GCNConv) aggregated neighbors with
+# purely structural weights and no notion of *what kind* of bond connects them.
+# ---------------------------------------------------------------------------
+def bond_features(bond):
+    from rdkit import Chem
+    bt = bond.GetBondType()
+    return np.array(
+        one_of_k_encoding_unk(bt,
+            [Chem.rdchem.BondType.SINGLE, Chem.rdchem.BondType.DOUBLE,
+             Chem.rdchem.BondType.TRIPLE, Chem.rdchem.BondType.AROMATIC]) +
+        [bond.GetIsConjugated(), bond.IsInRing()] +
+        one_of_k_encoding_unk(bond.GetStereo(),
+            [Chem.rdchem.BondStereo.STEREONONE, Chem.rdchem.BondStereo.STEREOZ,
+             Chem.rdchem.BondStereo.STEREOE]),
+        dtype=np.float32)
+
+
+EDGE_FEATURE_DIM = 11  # 4 bond-type one-hot + unk + conjugated + ring + 3 stereo one-hot + unk
+
+
 # --- compact atom featurizers (for the small-GCN / MPC-friendly variant) ---
 # Edges stay non-featured (GCNConv uses connectivity only); we only shrink the
 # per-node descriptor. "small" = element one-hot + aromatic/ring flags (12 dims);
@@ -149,7 +171,9 @@ FEATURIZERS = {
 
 
 def smile_to_graph(smile, feat_fn=atom_features):
-    """Return (num_nodes, node_features[N,D], edge_index[2,E]) for a SMILES."""
+    """Return (num_nodes, node_features[N,D], edge_index[2,E], edge_features[E,11])
+    for a SMILES. Edge features are always computed (cheap); models that don't
+    use edge_attr (GCNConv) simply ignore it -- backward compatible."""
     from rdkit import Chem
     mol = Chem.MolFromSmiles(smile)
     if mol is None:
@@ -162,22 +186,30 @@ def smile_to_graph(smile, feat_fn=atom_features):
         features.append(f / s if s > 0 else f)
     features = np.array(features, dtype=np.float32)
 
-    edges = []
+    edges, edge_feats = [], []
     for bond in mol.GetBonds():
         a, b = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
+        bf = bond_features(bond)
         edges.append((a, b))
         edges.append((b, a))  # undirected -> both directions
+        edge_feats.append(bf)
+        edge_feats.append(bf)  # same bond, same feature vector both directions
     if edges:
         edge_index = np.array(edges, dtype=np.int64).T  # [2, E]
+        edge_attr = np.array(edge_feats, dtype=np.float32)  # [E, 11]
     else:
         edge_index = np.zeros((2, 0), dtype=np.int64)
-    return c_size, features, edge_index
+        edge_attr = np.zeros((0, EDGE_FEATURE_DIM), dtype=np.float32)
+    return c_size, features, edge_index, edge_attr
 
 
 def build_graph_dataset(dataset, split, max_seq_len=None, featurizer="full"):
     """Return a list of torch_geometric Data objects (cached per unique SMILES).
 
     `featurizer` selects the per-atom descriptor width: full(94)|small(12)|tiny(4).
+    Every Data object carries `edge_attr` [E, 11] (bond type/conjugation/ring/
+    stereo); GCNConv-based models ignore it, GATv2Conv-based ones can use it
+    via `edge_dim=EDGE_FEATURE_DIM`.
     """
     from torch_geometric.data import Data
     feat_fn, _ = FEATURIZERS[featurizer]
@@ -189,11 +221,12 @@ def build_graph_dataset(dataset, split, max_seq_len=None, featurizer="full"):
     for smi, prot, y in zip(smiles, prots, ys):
         if smi not in graph_cache:
             graph_cache[smi] = smile_to_graph(smi, feat_fn)
-        c_size, features, edge_index = graph_cache[smi]
+        c_size, features, edge_index, edge_attr = graph_cache[smi]
         xt = label_encode(prot, max_seq_len, CHARPROTSET)
         data = Data(
             x=torch.from_numpy(features),
             edge_index=torch.from_numpy(edge_index),
+            edge_attr=torch.from_numpy(edge_attr),
             y=torch.tensor([y], dtype=torch.float32),
         )
         data.target = torch.from_numpy(xt).unsqueeze(0)  # [1, max_seq_len]

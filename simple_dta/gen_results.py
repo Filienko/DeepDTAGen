@@ -269,6 +269,28 @@ appendix("Davis", "davis", [
  ("GNN small12 gcn12  712K", ["gnn_davis_f12d12"], ""),
  ("GNN tiny4 gcn24  726K", ["gnn_davis_f4d24"], ""),
  ("GNN tiny4 gcn32  735K", ["gnn_davis_f4d32"], ""),
+ # ---- AttnDTA (attention/transformer proposals A-E, see EXPERIMENTS.md sec 10) ----
+ ("ATTN A: cross-attn fusion (cnn+cnn) 1.1M", ["attn_davis_A_crossfusion"], ""),
+ ("ATTN D: cross-attn fusion, linear attn 1.1M", ["attn_davis_D_crossfusion_linear"], ""),
+ ("ATTN B: protein transformer, linear attn 1.08M", ["attn_davis_B_prottransformer"], ""),
+ ("ATTN C: GAT + edge feats 918K", ["attn_davis_C_gat_edgefeats"], ""),
+ ("ATTN C2: GAT no edge feats (control) 918K", ["attn_davis_C2_gat_noedgefeats"], ""),
+ ("ATTN E: GAT+edge+transformer+cross, linear 1.28M", ["attn_davis_E_gat_transformer_cross"], ""),
+ ("ATTN E2: GAT+edge+cross, cnn protein 1.1M-ish", ["attn_davis_E2_gat_cross_cnnprot"], ""),
+ # ---- AttnDTA batch 2: plain-GCN+cross-attn control, Graphormer-style raw-node ----
+ # attention drug tower (no message passing at all), see EXPERIMENTS.md sec 11.
+ ("ATTN F: plain GCN + cross-attn (no GAT) 1.08M", ["attn_davis_F_gnn_crossfusion"], ""),
+ ("ATTN G1: graphformer + cross-attn 256d/8h/4L 3.9M", ["attn_davis_G1_graphformer_cross"], ""),
+ ("ATTN G2: graphformer + cross-attn 512d/8h/6L (xlarge) 15.5M", ["attn_davis_G2_graphformer_cross_xlarge"], ""),
+ ("ATTN G1-concat: graphformer alone, no cross-attn (control) 3.1M", ["attn_davis_G1_graphformer_concat"], ""),
+ ("ATTN H: raw atom feats (0 self-attn layers) + cross-attn 1.79M", ["attn_davis_H_rawnode_cross"], ""),
+
+ # ---- AttnDTA batch 3: validation + MPC-efficiency follow-up, see EXPERIMENTS.md sec 12 ----
+ ("ATTN I: plain GCN + cross-attn, softmax (missing grid quadrant) 1.08M", ["attn_davis_I_gnn_cross_softmax"], ""),
+ ("ATTN J: raw atom feats + cross-attn, LINEAR (fully softmax-free) 1.09M", ["attn_davis_J_rawnode_cross_linear"], ""),
+ ("ATTN F seed7: plain GCN + cross-attn, linear (replication) 1.08M", ["attn_davis_F_s7_gnn_crossfusion"], ""),
+ ("ATTN K1: GCN+cross-attn linear, UNILATERAL drug->prot only 1.01M", ["attn_davis_K1_gnn_cross_linear_drug2prot"], ""),
+ ("ATTN K2: GCN+cross-attn linear, UNILATERAL prot->drug only 1.01M", ["attn_davis_K2_gnn_cross_linear_prot2drug"], ""),
 ], pinned=_ddg_row)
 
 appendix("KIBA", "kiba", [
