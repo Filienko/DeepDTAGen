@@ -6,8 +6,8 @@ just different flag combinations). What's here is a **run script per model**
 with the right flags already filled in, so you don't need to memorize anything
 to reproduce or extend them.
 
-If you only read one thing: run the script, look at the `_summary.json` it
-produces, done. Everything below is reference detail.
+The goal of this document is to help you run the script, and read the `_summary.json` it
+produces.
 
 ## The 3 models at a glance
 
