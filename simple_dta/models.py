@@ -228,6 +228,37 @@ class _GCNStack(nn.Module):
         return x
 
 
+class _GINEStack(nn.Module):
+    """GINEConv stack: edge features enter every message directly, as
+    ReLU(x_j + edge_lin(edge_attr)), summed only over real bonded neighbors
+    (edge_lin is GINEConv's internal edge_dim projection) -- genuinely
+    different from every other edge-info path tried so far:
+      GCN            adjacency enforced, edge features never used at all
+      GAT            adjacency enforced, edge features modulate attention weight
+      Graphormer     adjacency NOT enforced (dense), edge features are a score bias
+      GINE (here)    adjacency enforced, edge features summed into the message itself
+    """
+
+    def __init__(self, node_feat_dim, gine_dim=128, gine_layers=2,
+                 edge_dim=EDGE_FEATURE_DIM, dropout=0.1):
+        super().__init__()
+        from torch_geometric.nn import GINEConv
+        dims = [node_feat_dim] + [gine_dim] * gine_layers
+        self.convs = nn.ModuleList([
+            GINEConv(
+                nn.Sequential(nn.Linear(dims[i], dims[i + 1]), nn.ReLU(),
+                              nn.Linear(dims[i + 1], dims[i + 1])),
+                edge_dim=edge_dim)
+            for i in range(gine_layers)
+        ])
+        self.out_dim = gine_dim
+
+    def forward(self, x, edge_index, edge_attr):
+        for conv in self.convs:
+            x = F.relu(conv(x, edge_index, edge_attr))
+        return x
+
+
 class GraphAttnEncoder(nn.Module):
     """Attention-based drug graph encoder: GATv2Conv stack, optionally
     conditioned on bond features (`edge_dim=EDGE_FEATURE_DIM`) instead of
@@ -304,7 +335,7 @@ class AttnDTA(nn.Module):
                  embed_dim=128, num_filters=32, drug_kernel=4, prot_kernel=8,
                  pool="max", head_dim=1024, head_layers=2, dropout=0.1):
         super().__init__()
-        assert drug_encoder in ("cnn", "gnn", "gat", "graphformer"), \
+        assert drug_encoder in ("cnn", "gnn", "gat", "graphformer", "gine"), \
             f"unknown drug_encoder {drug_encoder}"
         assert protein_encoder in ("cnn", "transformer"), f"unknown protein_encoder {protein_encoder}"
         assert fusion in ("concat", "cross"), f"unknown fusion {fusion}"
@@ -334,6 +365,10 @@ class AttnDTA(nn.Module):
                                              n_heads=drug_attn_heads, n_layers=drug_attn_layers,
                                              edge_dim=edge_dim, dropout=dropout)
             drug_out_dim = drug_attn_dim
+        elif drug_encoder == "gine":
+            self.drug = _GINEStack(node_feat_dim, gine_dim=gat_dim, gine_layers=gat_layers,
+                                   edge_dim=EDGE_FEATURE_DIM, dropout=dropout)
+            drug_out_dim = gat_dim
         else:  # "gnn"
             self.drug = _GCNStack(node_feat_dim, gat_dim, gat_layers)
             drug_out_dim = gat_dim
@@ -374,7 +409,8 @@ class AttnDTA(nn.Module):
                 return self.drug_proj(seq), pad_mask
             return masked_pool(seq, pad_mask, self.pool), None
         x, edge_index, edge_attr, batch_vec = drug_input
-        h = self.drug(x, edge_index, edge_attr) if self.drug_kind == "gat" else self.drug(x, edge_index)
+        h = (self.drug(x, edge_index, edge_attr) if self.drug_kind in ("gat", "gine")
+             else self.drug(x, edge_index))
         if self.fusion == "cross":
             from torch_geometric.utils import to_dense_batch
             seq, node_mask = to_dense_batch(h, batch_vec)  # node_mask: True = real node

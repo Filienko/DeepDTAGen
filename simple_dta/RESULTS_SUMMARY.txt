@@ -152,8 +152,10 @@ stable embed64  852K                                                            
 stable ch 48-96-144  1.13M                                                         -      0.863  0.832  0.817  0.797  0.796  0.781  0.772  0.808
 CNN t1 32/32 h1536L1  457K                                                         -      0.863  0.857  0.828  0.818  0.790  0.767  0.724  0.807
 WINNER dilated 800K seed7                                                          -      0.862  0.847  0.833  0.790  0.804  0.773  0.718  0.804
-ATTN J: raw atom feats + cross-attn, LINEAR (fully softmax-free) 1.09M             -      0.830  0.835  0.824  0.794  0.778  0.764  0.766  0.799
+ATTN J: raw atom feats + cross-attn, LINEAR (fully softmax-free) 1.09M             -      0.856  0.839  0.824  0.812  0.797  0.773  0.718  0.803
+ATTN K2: GCN+cross-attn linear, UNILATERAL prot->drug only 1.01M                   -      0.842  0.839  0.815  0.789  0.775  0.759  0.778  0.800
 stable ch 24-48-72  778K                                                           -      0.862  0.830  0.824  0.801  0.789  0.753  0.730  0.798
+ATTN I: plain GCN + cross-attn, softmax (missing grid quadrant) 1.08M              -      0.855  0.839  0.814  0.789  0.778  0.766  0.741  0.798
 REG A t4-proj32 267K d0.1 wd0 [balacc-sel]                                         -      0.858  0.849  0.819  0.783  0.774  0.740  0.742  0.795
 cfgA-267K + protDil[1,2,3]                                                         -      0.854  0.837  0.808  0.791  0.773  0.756  0.736  0.793
 ATTN K1: GCN+cross-attn linear, UNILATERAL drug->prot only 1.01M                   -      0.850  0.826  0.801  0.777  0.765  0.770  0.765  0.793
@@ -174,9 +176,7 @@ stable 882K pool=MEAN [balacc-sel]                                              
 cfgA-367K + protDil[1,2,3,11] 4-layer                                              -      0.855  0.830  0.806  0.777  0.777  0.744  0.676  0.780
 CNN base  h1024L1  358K                                                            -      0.856  0.839  0.813  0.770  0.755  0.725  0.698  0.779
 GNN full-94 gcn128  903K                                                           -      0.840  0.833  0.812  0.762  0.755  0.732  0.717  0.779
-ATTN I: plain GCN + cross-attn, softmax (missing grid quadrant) 1.08M              -      0.806  0.818  0.809  0.770  0.775  0.751  0.722  0.778
 CNN c4 flat 32/32/32  647K                                                         -      0.851  0.827  0.810  0.786  0.731  0.723  0.700  0.775
-ATTN K2: GCN+cross-attn linear, UNILATERAL prot->drug only 1.01M                   -      0.816  0.797  0.784  0.768  0.762  0.757  0.734  0.774
 ATTN B: protein transformer, linear attn 1.08M                                     -      0.837  0.795  0.782  0.767  0.764  0.731  0.735  0.773
 CNN t3 leandrug h1536L1  351K                                                      -      0.856  0.830  0.807  0.772  0.728  0.716  0.688  0.771
 REG A t4-proj32 267K d0.3 wd0 [balacc-sel]                                         -      0.846  0.843  0.814  0.774  0.752  0.709  0.658  0.771

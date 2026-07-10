@@ -291,6 +291,25 @@ appendix("Davis", "davis", [
  ("ATTN F seed7: plain GCN + cross-attn, linear (replication) 1.08M", ["attn_davis_F_s7_gnn_crossfusion"], ""),
  ("ATTN K1: GCN+cross-attn linear, UNILATERAL drug->prot only 1.01M", ["attn_davis_K1_gnn_cross_linear_drug2prot"], ""),
  ("ATTN K2: GCN+cross-attn linear, UNILATERAL prot->drug only 1.01M", ["attn_davis_K2_gnn_cross_linear_prot2drug"], ""),
+
+ # ---- AttnDTA batch 4: shrink F, shrink+attn-ify the small CNN baseline, ----
+ # improve E2 + true edge-aware message passing (GINE) + graphformer layer
+ # interpolation, see EXPERIMENTS.md sec 13.
+ ("ATTN F1: shrink F -- attn/gcn-dim 64, head 512L1 223K", ["attn_davis_F1_lean"], ""),
+ ("ATTN F2: shrink F -- attn/gcn-dim 32, head 512L1 152K", ["attn_davis_F2_tiny"], ""),
+ ("ATTN F3: F + UNILATERAL prot->drug + head 512L1 358K", ["attn_davis_F3_uni_head"], ""),
+ ("ATTN F4: F + UNILATERAL + dim64 + head 512L1 206K", ["attn_davis_F4_uni_lean"], ""),
+ ("CNN cfgA + lean drug tower (asym, T3-style) 248K", ["cnn_davis_A2_leantower"], ""),
+ ("CNN cfgA + proj16/head1024L1 (smaller than cfgA) 197K", ["cnn_davis_A3_smaller"], ""),
+ ("ATTN A4: cnn+cnn + TINY cross-attn (dim32) vs concat 208K", ["attn_davis_A4_crossattn"], ""),
+ ("ATTN A5: mini-F -- gcn32+cross(dim32,uni)+head512L1 148K", ["attn_davis_A5_minignn"], ""),
+ ("ATTN E3: GAT+edge+cross, LINEAR (E2's linear twin) 1.11M", ["attn_davis_E3_gat_edge_linear"], ""),
+ ("ATTN E4: GAT (no edge)+cross, linear (control for E3) 1.11M", ["attn_davis_E4_gat_noedge_linear"], ""),
+ ("ATTN E5: GAT+edge, lean+uni+linear 218K", ["attn_davis_E5_gat_lean"], ""),
+ ("ATTN L1: GINEConv (edges IN message passing)+cross,linear 1.12M", ["attn_davis_L1_gine_cross_linear"], ""),
+ ("ATTN L2: GINEConv, lean+uni+linear 216K", ["attn_davis_L2_gine_lean"], ""),
+ ("ATTN H1L: graphformer 1 self-attn layer + cross (H/G1 interp) 2.32M", ["attn_davis_H1L_graphformer1L"], ""),
+ ("ATTN H2L: graphformer 2 self-attn layers + cross (H/G1 interp) 2.85M", ["attn_davis_H2L_graphformer2L"], ""),
 ], pinned=_ddg_row)
 
 appendix("KIBA", "kiba", [

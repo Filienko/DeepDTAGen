@@ -750,12 +750,17 @@ follow-up once F/G1/G2/H are compared.
 | 1 | A | cnn+cnn, cross-attn, **softmax** | 1.1M | **0.840** |
 | 2 | F | gnn (plain GCN)+cnn, cross-attn, linear | 1.08M | 0.831 |
 | 3 | H | raw atoms (0 self-attn)+cnn, cross-attn, softmax | 1.79M | 0.826 |
-| 4 | E2 | gat+edge+cnn, cross-attn, softmax | 1.1M | 0.814 |
-| 5 | D | cnn+cnn, cross-attn, linear | 1.1M | 0.788 |
-| 6 | E | gat+edge+protein-transformer, cross-attn, linear | 1.28M | 0.787 |
-| 7 | C2 | gat (no edge feats), concat | 918K | 0.785 |
-| 8 | B | cnn+protein-transformer, concat, linear | 1.08M | 0.773 |
-| 9 | C | gat+edge, concat | 918K | 0.741 |
+| 4 | F_s7 | F, seed replicate | 1.08M | 0.817 |
+| 5 | E2 | gat+edge+cnn, cross-attn, softmax | 1.1M | 0.814 |
+| 6 | J | graphformer(0L)+cnn, cross-attn, **linear** (fully softmax-free) | 1.09M | 0.803 |
+| 7 | K2 | F, UNILATERAL `prot2drug` cross-attn | 1.01M | 0.800 |
+| 8 | I | gnn+cnn, cross-attn, softmax | 1.08M | 0.798 |
+| 9 | K1 | F, UNILATERAL `drug2prot` cross-attn | 1.01M | 0.793 |
+| 10 | D | cnn+cnn, cross-attn, linear | 1.1M | 0.788 |
+| 11 | E | gat+edge+protein-transformer, cross-attn, linear | 1.28M | 0.787 |
+| 12 | C2 | gat (no edge feats), concat | 918K | 0.785 |
+| 13 | B | cnn+protein-transformer, concat, linear | 1.08M | 0.773 |
+| 14 | C | gat+edge, concat | 918K | 0.741 |
 | — | G1/G2/G1-concat | Graphormer-style drug self-attn (4-6 layers) | 3.9-15.5M | **~0.50 (collapsed)** |
 
 Reference: DeepDTAGen (paper-reported balAcc target) = 0.820, at 3.58M params
@@ -828,35 +833,180 @@ both G1/G2 slots freed simultaneously — caught and killed within ~15s, only
 cosmetic damage (H's plain-text log history before that point), the actual
 training process/checkpoints were never touched.
 
-### 12.3 Batch 3 results (2026-07-09, partial — K1/F_s7 finished, I/J/K2 still training)
+### 12.3 Batch 3 results (final, all 5 jobs `DONE` as of 2026-07-10 03:12 UTC)
 
-| tag | status | epoch | config | params | mean balAcc |
-|---|---|---|---|---|---|
-| K1 | **finished** | 70/100 | gnn+cnn, cross, linear, `drug2prot`-only | 1.01M | **0.793** |
-| F_s7 | **finished** | 75/100 | gnn+cnn, cross, linear, seed=7 (replicates F) | 1.08M | **0.817** |
-| J | in progress | ~55/100 | graphformer(0L)+cnn, cross, **linear** (fully softmax-free) | 1.09M | 0.799 (provisional, best-so-far) |
-| I | in progress | ~70/100 | gnn+cnn, cross, **softmax** | 1.08M | 0.778 (provisional, best-so-far) |
-| K2 | in progress | ~55/100 | gnn+cnn, cross, linear, `prot2drug`-only | 1.01M | 0.774 (provisional, best-so-far) |
+| tag | config | params | mean balAcc |
+|---|---|---|---|
+| F_s7 | gnn+cnn, cross, linear, seed=7 (replicates F) | 1.08M | 0.817 |
+| J | graphformer(0L)+cnn, cross, **linear** (fully softmax-free) | 1.09M | **0.803** |
+| K2 | gnn+cnn, cross, linear, `prot2drug`-only | 1.01M | 0.800 |
+| I | gnn+cnn, cross, **softmax** | 1.08M | 0.798 |
+| K1 | gnn+cnn, cross, linear, `drug2prot`-only | 1.01M | 0.793 |
 
-Findings so far:
-1. **J (fully softmax-free) is the headline result**: 0.799 mean balAcc with *zero*
-   softmax anywhere in the model — beats D, E, C2, B, C and is within ~3pp of F
-   (0.831, the best linear-attention config) and H (0.826, its own softmax
-   twin). This is the strongest MPC candidate found yet, still training and may
-   improve further.
-2. **Unilateral cross-attention costs real accuracy.** K1 (drug→prot only,
-   finished) = 0.793 vs F's bilateral 0.831 — a 3.8pp drop. K2 (prot→drug only,
-   still training) is provisionally lower still (0.774). Both directions
-   appear to matter; halving cross-attention compute is not free on this task.
-3. **Softmax vs. linear flips winner depending on the drug tower.** On the CNN
-   drug tower, softmax wins (A=0.840 > D=0.788). On the plain-GCN drug tower,
-   linear wins instead (F=0.831 > I=0.778, provisional). So for a GNN backbone,
-   going softmax-free is a *pure win* here — both cheaper under MPC and more
-   accurate in this run — not a tradeoff.
+Findings:
+1. **J (fully softmax-free) is confirmed as a strong result**: 0.803 mean balAcc
+   with *zero* softmax anywhere in the model — beats D, E, C2, B, C, I, and both
+   unilateral configs (K1/K2), and trails only F (0.831) and H (0.826, its own
+   softmax twin) among cross-attention configs. Best fully-softmax-free config
+   found so far.
+2. **Unilateral cross-attention costs real accuracy, but the direction that
+   "should" matter more doesn't.** Both K1 (drug→prot only, 0.793) and K2
+   (prot→drug only, 0.800) trail F's bilateral 0.831 by 3-4pp — but K2 (protein
+   querying the drug) came out *ahead* of K1, the opposite of the pre-registered
+   guess that drug→protein (small graph reaching into the long sequence) would
+   dominate. Read: with linear attention's O(n) cost, the direction doesn't
+   change which side "does the work" as much as expected; if only one direction
+   is affordable under MPC, prefer `prot2drug` (K2 config) on this evidence.
+3. **Softmax vs. linear on the GCN drug tower is now a near-tie, not a clean
+   linear win.** With I's final number in (0.798, up from the provisional
+   0.778), linear (F=0.831) still leads but by less than the mid-batch read
+   suggested — I ≈ J ≈ K2 all land in the same 0.798-0.800 band regardless of
+   softmax/linear. The clearest remaining softmax-vs-linear gap is still on the
+   CNN drug tower (A=0.840 > D=0.788).
 4. **Seed noise is ~1-4pp.** F_s7 (seed 7) landed at 0.817 vs F's original
    0.831 — treat gaps under ~2pp between configs as noise, not signal.
 
-I/J/K2 are still training as of this writing (2026-07-09 ~20:40 UTC); numbers
-above for those three are the best-epoch-so-far and will keep moving until
-each hits epoch 100 or an early best plateaus. Update this table once all
-five are `DONE` in `runs/queue.driver.log`.
+These results, plus the "why did H do so well" question, motivated batch 4
+(section 13): shrink F, shrink+attention-ify the small CNN baseline, and
+improve/diagnose the graph-aware family (E2, GINE, graphformer layer count).
+
+## 13. Batch 4 (2026-07-10) — shrink F, upgrade the small CNN, edge-aware message passing
+
+Three follow-up directions, requested directly after reviewing the batch 1-3
+leaderboard.
+
+### 13.1 Direction 1 (F1-F4): how small can F go?
+
+F (gnn+cnn, cross-attn, linear, 0.831 balAcc) is the best MPC candidate found
+so far, but 1.08M params has never been decomposed. A param audit of F's
+actual layers: the GCN drug tower is tiny (~29K, node_feat_dim=94 -> 128 x2
+layers), the protein CNN tower is ~101K, but **the 1024/512 prediction head
+alone is ~788K -- roughly 73% of the whole model.** This mirrors exactly what
+made Config A (section 3, `--proj-dim 32 --head-dim 1536 --head-layers 1`)
+267K instead of 882K: cutting head width/depth is the single biggest lever,
+not the tower. For F, cross-attention's `attn_dim` also enters the head's
+input width (`attn_dim * 2`) and the cross-attention module's own params
+scale quadratically with `attn_dim` -- so narrowing `attn_dim` compounds with
+narrowing the head, unlike a plain concat model where they're independent
+knobs.
+
+| job | change from F | params |
+|---|---|---|
+| F1_lean | attn/gcn-dim 128->64, head 1024/512L2 -> 512L1 | 223K |
+| F2_tiny | attn/gcn-dim 128->32 (heads 4->2), head 512L1 | 152K |
+| F3_uni_head | + UNILATERAL `prot2drug` (K2's direction -- the one that scored *higher* in batch 3), head 512L1, full attn/gcn-dim kept | 358K |
+| F4_uni_lean | UNILATERAL `prot2drug` + attn/gcn-dim 64 + head 512L1 (combines every lever) | 206K |
+
+All smoke-tested (forward+backward on a real Davis batch; F4's exact sibling
+config was run for 1 real epoch end-to-end, see 13.3). If F1/F3 hold close to
+0.831 while F2/F4 drop off, that pinpoints whether the head or the
+attention/GCN width is the safer place to cut for an MPC port.
+
+### 13.2 Direction 2 (A2-A5): upgrade the 267K CNN+CNN baseline (`Config A`, section 3)
+
+Config A (`--drug-filters 32 --prot-filters 32 --proj-dim 32 --head-dim 1536
+--head-layers 1`, 267K params) is balAcc-selected at 0.795 -- within ~2.5pp of
+DeepDTAGen and the smallest model on the whole board by a wide margin. Two of
+its own findings were never combined with it: T3's asymmetric tower result
+(lean drug / full protein wins, section 3) and every cross-attention-beats-
+concat finding from sections 10-12 (batches 1-3). Also tries: does a
+graph+cross-attention drug tower (the "F recipe") still win over plain CNN+
+concat once compressed down to the same ~150-250K budget it usually competes
+at 1M+?
+
+| job | idea | params |
+|---|---|---|
+| A2_leantower | Config A + T3's lean-drug/full-protein asymmetry (`drug-filters 24`, never combined with proj/head compression before) | 248K |
+| A3_smaller | Config A, compressed further (`proj-dim 16`, `head-dim 1024L1`) | 197K |
+| A4_crossattn | cnn+cnn, but **cross-attention fusion (linear, dim 32) instead of concat+proj** -- does cross-attention help even at this tiny scale, or is it a large-model-only effect? | 208K |
+| A5_minignn | "mini-F": gnn (gcn-dim 32) + cnn, cross-attn (dim 32, linear, `prot2drug`-only), head 512L1 -- the graph+cross-attention recipe compressed to CNN-baseline scale | 148K |
+
+### 13.3 Direction 3 (E3-E5, L1-L2, H1L-H2L): graph-awareness, edge features, and the H puzzle
+
+The user's framing: pure CNN+CNN towers are the least interesting result here
+precisely *because* they ignore the molecular graph -- E2 (GAT+edge features+
+cross-attn+softmax, 0.814) is the most appealing model on the board for that
+reason even though it's not the top scorer, and the goal is to make *that*
+family more accurate and more efficient, not to keep optimizing the
+graph-blind CNN.
+
+**E2's untried linear-attention twin, plus a control.** E2 has only ever been
+run with `attn-kind softmax`; every other GNN-family drug tower (F, I, K1, K2)
+has shown linear attention is at worst competitive there. E3 tests exactly
+that swap; E4 drops `--use-edge-feats` under the same linear setting as a
+control (E2 vs C2 already showed edge feats didn't help under softmax --
+worth checking whether that holds under linear too). E5 combines E3's recipe
+with the same shrink/unilateral levers as direction 1.
+
+| job | change from E2 | params |
+|---|---|---|
+| E3_gat_edge_linear | `attn-kind softmax` -> `linear` | 1.11M |
+| E4_gat_noedge_linear | E3 minus `--use-edge-feats` (isolates edge-feature contribution under linear attn) | 1.11M |
+| E5_gat_lean | E3 + `gat-dim`/`attn-dim` 128->64, UNILATERAL `prot2drug`, head 512L1 | 218K |
+
+**A genuinely new edge-aware drug tower: GINEConv (`--drug-encoder gine`).**
+The taxonomy discussed earlier this session had a real gap: GCN ignores edge
+features entirely; GAT uses them to *modulate an attention weight* over
+already-adjacent neighbors; Graphormer uses them as a *bias on an
+unstructured, non-adjacency-respecting attention score*. None of them sum
+edge information directly into the message being passed. `GINEConv`
+(Hu et al. 2019, "Strategies for Pre-training GNNs" -- well-established for
+molecular property prediction, e.g. OGB) does exactly that:
+`x_i' = MLP((1+eps)*x_i + sum_{j in N(i)} ReLU(x_j + edge_lin(edge_attr_ji)))`
+-- adjacency is still hard-enforced (only real bonded neighbors contribute,
+same as GCN/GAT), but the bond's own features are added directly into each
+neighbor's contribution before the sum, not used to gate a coefficient.
+New class `_GINEStack` in `models.py`; new `--drug-encoder gine` in
+`train.py` (edge features always on for this encoder -- `--use-edge-feats` is
+a no-op for it, since GINEConv's whole point requires them). Smoke-tested via
+direct forward+backward on a synthetic batch, then a full real 1-epoch run on
+Davis end-to-end (`L2_gine_lean`'s exact config: 215,977 params, 87.6s/epoch,
+no NaN, loss and balAcc both sane) before launch.
+
+| job | config | params |
+|---|---|---|
+| L1_gine_cross_linear | GINE (gcn-dim 128) + cnn, cross-attn, linear -- same budget class as F, direct comparison of "edges in the message" vs F's "no edges at all" | 1.12M |
+| L2_gine_lean | GINE (gcn-dim 64) + cnn, cross-attn (dim 64, linear, `prot2drug`-only), head 512L1 -- same budget class as the direction-1/2 shrink jobs | 216K |
+
+**The H puzzle: why does zero-structure raw-atom cross-attention (0.826) beat
+GAT+edges (0.814) and nearly match F (0.831)?** H has no message passing and
+no adjacency at all -- every atom cross-attends the protein directly from its
+raw feature vector. G1 (same tower, but with 4 self-attention layers *before*
+cross-attention) collapses to random guessing. That's a huge, unexplained
+cliff between 0 layers (works great) and 4 layers (total collapse), and nobody
+has tried the middle. H1L/H2L interpolate it directly -- same architecture as
+H/G1, only `--drug-attn-layers` changes:
+
+| job | drug-attn-layers | (H=0 and G1=4 already on the board) | params |
+|---|---|---|---|
+| H1L_graphformer1L | 1 | | 2.32M |
+| H2L_graphformer2L | 2 | | 2.85M |
+
+Working hypothesis this is meant to test: the collapse is a *training-depth/
+optimization* failure specific to stacking multiple untrained self-attention
+blocks with no positional encoding and no warmup (each added layer makes the
+loss landscape harder to escape from a bad init), not evidence that "no
+message passing" is inherently unstable -- since H itself has zero message
+passing and trains fine. If H1L trains fine and H2L is where things start to
+degrade, that pinpoints the depth at which it breaks and supports the
+optimization-failure reading over a representational one. Params scale
+steeply with layer count here (2.32M/2.85M vs H's 1.79M) because each added
+`TransformerEncoderBlock` is a full 256-wide self-attention + FFN block over
+up to ~100 atoms -- expensive to add, which is itself a reason to prefer H's
+answer (0 layers) if it turns out 0 is in fact optimal, not just cheapest.
+
+### 13.4 Batch launch
+
+14 jobs total (`jobs_attn4.txt`), Davis, 100 epochs, balAcc-selected. All new
+code paths (`gine` drug encoder, all width/direction combinations) smoke-
+tested before launch -- either a real 1-epoch end-to-end run
+(`L2_gine_lean`'s config: 215,977 params, 87.6s/epoch; `A4_crossattn`'s exact
+config: 208,065 params, 79.8s/epoch, both on real Davis data, no NaN) or, for
+combinations that only vary a width/direction flag already validated
+end-to-end in batches 1-3 (F-family, GAT+linear, graphformer layer count),
+a direct `AttnDTA` forward+backward smoke test on a synthetic batch. Launched
+via `setsid nohup bash run_queue.sh jobs_attn4.txt 6 8 & disown` (bumped
+concurrency to 6 parallel jobs x 8 threads = 48 threads total, up from batch
+3's 4x12, since the box was measured near-idle beforehand -- load average
+3.1 on 48 cores, other users' jobs using ~3 cores total). Results: TODO fill
+in once `runs/queue.driver.log` shows all 14 `DONE`.

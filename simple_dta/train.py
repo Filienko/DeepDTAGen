@@ -81,13 +81,17 @@ def evaluate(model, loader, loader_kind, device, dataset=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", choices=["cnn", "gnn", "attn"], required=True)
-    ap.add_argument("--drug-encoder", choices=["cnn", "gnn", "gat", "graphformer"], default="cnn",
+    ap.add_argument("--drug-encoder", choices=["cnn", "gnn", "gat", "graphformer", "gine"], default="cnn",
                     help="attn only: drug tower -- cnn=SmilesCNN, gnn=plain GCN "
                          "(GNNDTA control, no attention in message passing), "
                          "gat=GATv2 (content-based, edge-feature-aware message passing), "
                          "graphformer=NO message passing at all -- raw per-atom features "
                          "self-attend directly, bond features enter only as an additive "
-                         "attention-score bias (see DrugGraphTransformer)")
+                         "attention-score bias (see DrugGraphTransformer), "
+                         "gine=GINEConv -- adjacency still hard-enforced (message passing, "
+                         "like gnn/gat) but edge features are summed directly into each "
+                         "neighbor's message rather than gating attention or biasing a score "
+                         "(see _GINEStack). --use-edge-feats has no effect here (always on).")
     ap.add_argument("--protein-encoder", choices=["cnn", "transformer"], default="cnn",
                     help="attn only: protein tower -- cnn=ProteinCNN, "
                          "transformer=self-attention encoder (global RF from layer 1)")

@@ -1,0 +1,39 @@
+# Batch 4 (2026-07-10): three follow-up directions from batches 1-3.
+#   Direction 1 (F1-F4): shrink F (best MPC candidate, gnn+cnn cross-attn linear,
+#     1.08M/0.831 balAcc) -- narrow attn/gcn width and/or go unilateral, looking
+#     for the smallest model that keeps most of F's accuracy.
+#   Direction 2 (A2-A5): the small 267K CNN+CNN "Config A" (0.795 balAcc, within
+#     ~2.5pp of DeepDTAGen) -- shrink further, and separately try folding in
+#     principles from the attention/graph work (lean asymmetric towers, tiny
+#     cross-attention fusion instead of concat, a "mini-F" graph+cross-attn
+#     model compressed to the same param budget) without ballooning size.
+#   Direction 3 (E3-E5, L1-L2, H1L-H2L): improve E2 (GAT+edge+cross+softmax,
+#     0.814 balAcc) for accuracy/efficiency while keeping graph-awareness;
+#     E2's untried linear-attention twin; a properly edge-aware message-passing
+#     drug tower (GINEConv -- edges enter the message sum directly, adjacency
+#     still hard-enforced, unlike GAT's attention-gating or Graphormer's dense
+#     score-bias); and a layer-count interpolation (1, 2 self-attn layers) of
+#     the Graphormer drug tower between H (0 layers, 0.826, works great) and
+#     G1 (4 layers, collapses to ~0.50) to find where/why it breaks.
+# See EXPERIMENTS.md section 13 for the full design writeup.
+
+# --- Direction 1: shrink F ---
+attn_davis_F1_lean|--model attn --drug-encoder gnn --protein-encoder cnn --fusion cross --attn-kind linear --attn-dim 64 --attn-heads 4 --gat-dim 64 --gat-layers 2 --head-dim 512 --head-layers 1 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _F1_lean
+attn_davis_F2_tiny|--model attn --drug-encoder gnn --protein-encoder cnn --fusion cross --attn-kind linear --attn-dim 32 --attn-heads 2 --gat-dim 32 --gat-layers 2 --head-dim 512 --head-layers 1 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _F2_tiny
+attn_davis_F3_uni_head|--model attn --drug-encoder gnn --protein-encoder cnn --fusion cross --attn-kind linear --cross-direction prot2drug --head-dim 512 --head-layers 1 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _F3_uni_head
+attn_davis_F4_uni_lean|--model attn --drug-encoder gnn --protein-encoder cnn --fusion cross --attn-kind linear --cross-direction prot2drug --attn-dim 64 --attn-heads 4 --gat-dim 64 --gat-layers 2 --head-dim 512 --head-layers 1 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _F4_uni_lean
+
+# --- Direction 2: small CNN+CNN baseline, shrink + attention/graph principles ---
+cnn_davis_A2_leantower|--model cnn --dataset davis --epochs 100 --embed-dim 128 --drug-filters 24 --prot-filters 32 --proj-dim 32 --head-dim 1536 --head-layers 1 --select-metric balacc --seed 4221 --tag-suffix _A2_leantower
+cnn_davis_A3_smaller|--model cnn --dataset davis --epochs 100 --embed-dim 128 --drug-filters 32 --prot-filters 32 --proj-dim 16 --head-dim 1024 --head-layers 1 --select-metric balacc --seed 4221 --tag-suffix _A3_smaller
+attn_davis_A4_crossattn|--model attn --drug-encoder cnn --protein-encoder cnn --fusion cross --attn-kind linear --attn-dim 32 --attn-heads 2 --head-dim 512 --head-layers 1 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _A4_crossattn
+attn_davis_A5_minignn|--model attn --drug-encoder gnn --protein-encoder cnn --fusion cross --attn-kind linear --cross-direction prot2drug --attn-dim 32 --attn-heads 2 --gat-dim 32 --gat-layers 2 --head-dim 512 --head-layers 1 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _A5_minignn
+
+# --- Direction 3: improve E2, edge-aware message passing, graphformer layer sweep ---
+attn_davis_E3_gat_edge_linear|--model attn --drug-encoder gat --protein-encoder cnn --fusion cross --attn-kind linear --use-edge-feats --dataset davis --epochs 100 --select-metric balacc --tag-suffix _E3_gat_edge_linear
+attn_davis_E4_gat_noedge_linear|--model attn --drug-encoder gat --protein-encoder cnn --fusion cross --attn-kind linear --dataset davis --epochs 100 --select-metric balacc --tag-suffix _E4_gat_noedge_linear
+attn_davis_E5_gat_lean|--model attn --drug-encoder gat --protein-encoder cnn --fusion cross --attn-kind linear --use-edge-feats --cross-direction prot2drug --gat-dim 64 --gat-heads 4 --attn-dim 64 --head-dim 512 --head-layers 1 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _E5_gat_lean
+attn_davis_L1_gine_cross_linear|--model attn --drug-encoder gine --protein-encoder cnn --fusion cross --attn-kind linear --gat-dim 128 --gat-layers 2 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _L1_gine_cross_linear
+attn_davis_L2_gine_lean|--model attn --drug-encoder gine --protein-encoder cnn --fusion cross --attn-kind linear --cross-direction prot2drug --gat-dim 64 --gat-layers 2 --attn-dim 64 --head-dim 512 --head-layers 1 --dataset davis --epochs 100 --select-metric balacc --tag-suffix _L2_gine_lean
+attn_davis_H1L_graphformer1L|--model attn --drug-encoder graphformer --protein-encoder cnn --fusion cross --drug-attn-dim 256 --drug-attn-heads 8 --drug-attn-layers 1 --attn-dim 256 --attn-heads 8 --attn-kind softmax --dataset davis --epochs 100 --select-metric balacc --tag-suffix _H1L_graphformer1L
+attn_davis_H2L_graphformer2L|--model attn --drug-encoder graphformer --protein-encoder cnn --fusion cross --drug-attn-dim 256 --drug-attn-heads 8 --drug-attn-layers 2 --attn-dim 256 --attn-heads 8 --attn-kind softmax --dataset davis --epochs 100 --select-metric balacc --tag-suffix _H2L_graphformer2L
