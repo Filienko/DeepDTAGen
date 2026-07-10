@@ -15,6 +15,11 @@ obsession with small models and cheap operations.
 > **New here? Read this file top to bottom once, then run the Quick Start (§3).** After
 > that, §5 (playground) and §7 (what we've already tried) are where you'll spend your time.
 
+> **Just want to run our 3 best models (not explore/modify)?** Go straight to
+> [`best_models/`](best_models/README.md) — one script per model, no flags to
+> remember. That's the fastest path if your task is "run these with different
+> seeds/datasets/metrics" rather than "build something new."
+
 ---
 
 ## Contents
