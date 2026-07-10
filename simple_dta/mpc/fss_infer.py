@@ -107,12 +107,15 @@ class FSSBackend(Backend):
     def _w(self, weight):
         return encode(weight.to(torch.float64), self.f).to(self.device)
 
-    def _trunc(self, sh):
-        """SecureML 2-party local truncation by f bits (rescale after a mult)."""
+    def _trunc_by(self, sh, bits):
+        """SecureML 2-party local truncation by `bits` (rescale after a mult)."""
         s0, s1 = sh
-        t0 = (s0 & MASK) >> self.f
-        t1 = (RING - (((RING - (s1 & MASK)) & MASK) >> self.f)) & MASK
+        t0 = (s0 & MASK) >> bits
+        t1 = (RING - (((RING - (s1 & MASK)) & MASK) >> bits)) & MASK
         return t0 & MASK, t1 & MASK
+
+    def _trunc(self, sh):
+        return self._trunc_by(sh, self.f)
 
     def _add_public(self, sh, pub):
         # add a public vector (bias) to a shared tensor -> add to one share only
@@ -143,12 +146,16 @@ class FSSBackend(Backend):
         return self._add_public((t0, t1), self._w(bias).view(1, -1))
 
     def mean_pool(self, x):
+        # mean = (sum over L) * (1/L). Represent 1/L at an adaptive scale F2 chosen
+        # so `inv` stays ~2^10 (accurate 1/L, e.g. round(1/1200*2^f)=0 would underflow
+        # at small f) WHILE keeping sum*inv inside the 32-bit ring for bounded (trained)
+        # activations. Summing shares over L is local (free).
         L = x[0].shape[2]
-        s0 = x[0].sum(dim=2) & MASK
-        s1 = x[1].sum(dim=2) & MASK
-        # multiply by public 1/L (fixed-point) then truncate
-        inv = encode(torch.tensor(1.0 / L, dtype=torch.float64), self.f).to(self.device)
-        return self._trunc(((s0 * inv) & MASK, (s1 * inv) & MASK))
+        F2 = 10 + int(L).bit_length() - 1        # ~ 10 + floor(log2 L)
+        inv = int(round((1 << F2) / L))
+        s0 = (x[0].sum(dim=2) * inv) & MASK
+        s1 = (x[1].sum(dim=2) * inv) & MASK
+        return self._trunc_by((s0, s1), F2)
 
     def concat(self, a, b):
         return (torch.cat([a[0], b[0]], dim=1) & MASK,

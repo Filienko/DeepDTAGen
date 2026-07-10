@@ -117,7 +117,10 @@ Ranked by impact (see `../FSS_FRAMEWORKS.md` for evidence):
 ---
 
 ## 4. Files
-- `model_mpc.py` — `MPCModel` (backend-agnostic) + `MPCReadyNet` (ONNX-exportable).
-- `fss_infer.py` — G1 self-contained FSS engine + `--sweep` precision tool.
-- `export_onnx.py` — ONNX export + onnxruntime equivalence check.
+- `model_mpc.py` — `MPCModel` (backend-agnostic) + `MPCReadyNet` (ONNX-exportable) + `load_cnndta` (checkpoint loader).
+- `fss_infer.py` — self-contained FSS engine + `--sweep` precision tool.
+- `accuracy.py` — load a trained mean-pool checkpoint → real cleartext metrics + FSS-vs-cleartext fidelity.
+- `export_onnx.py` — ONNX export (`--summary/--ckpt`) + onnxruntime equivalence check.
+- `run_ezpc_vm.sh` — build+run the EzPC LLAMA/Orca 2PC app on a larger (GPU) VM.
 - `test_fss.py` — correctness checks (G0 equality, secure ReLU, end-to-end FSS).
+- `setup_env.sh` / `requirements.txt` / `INSTALL.md` — environment + install steps.

@@ -1,0 +1,17 @@
+# Python deps for the MPC/FSS affinity port (simple_dta/mpc/).
+# Versions are the ones this PoC was built + verified against. torch is CPU here;
+# on a GPU box install the matching CUDA build of torch instead (see INSTALL.md).
+#
+#   pip install -r simple_dta/mpc/requirements.txt
+#
+# torch: CPU wheel. For CUDA, install from https://download.pytorch.org/whl/<cuXXX>.
+torch==2.13.0            # ==2.13.0+cpu as installed; drop the +cpu tag for GPU wheels
+numpy==2.4.6
+pandas==3.0.3
+scipy==1.17.1
+scikit-learn==1.9.0
+torch_geometric==2.8.0   # only needed for the graph (GNN/attn) models, not the CNN port
+rdkit==2026.3.3          # SMILES -> molecular graph (graph models + op-cost graph batches)
+sycret==0.2.8            # FSS DCF DReLU (AriaNN's Rust core), 32-bit ring -- fss_infer.py
+onnx==1.22.0             # export_onnx.py
+onnxruntime==1.27.0      # export_onnx.py equivalence check

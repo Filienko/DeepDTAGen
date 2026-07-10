@@ -137,6 +137,39 @@ class MPCModel:
         return self.forward(be, d, p).squeeze(-1)
 
 
+def load_cnndta(summary_path=None, ckpt_path=None):
+    """Rebuild the exact CNNDTA a run was trained with (from its
+    `runs/*_summary.json`) and load its weights. Reuses train.make_parser +
+    train.build_model so the architecture always matches the checkpoint. With no
+    summary, returns a default random-init mean-pool CNNDTA (pipeline testing).
+
+    The checkpoint must be a `simple_dta` **mean-pool** CNNDTA (trained with
+    `train.py --pool mean`), not the original DeepDTAGen model -- MPC requires
+    mean pooling (max-pool costs comparison rounds; see FSS_FRAMEWORKS.md)."""
+    import json
+    import train
+    from models import CNNDTA
+    if summary_path is None:
+        model = CNNDTA(pool="mean", proj_dim=0, head_layers=2, head_dim=128)
+    else:
+        with open(summary_path) as f:
+            summary = json.load(f)
+        assert summary.get("model") == "cnn", "MPC port targets the CNN model"
+        args = train.make_parser().parse_args(
+            ["--model", "cnn", "--dataset", summary.get("dataset", "davis")])
+        for k, v in summary.items():
+            if k not in ("model", "dataset") and hasattr(args, k):
+                setattr(args, k, v)
+        if args.pool != "mean":
+            raise ValueError(
+                f"checkpoint pool={args.pool!r}; MPC needs a mean-pool model. "
+                "Retrain with `train.py --model cnn --pool mean`.")
+        model = train.build_model(args)
+    if ckpt_path:
+        model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
+    return model.eval()
+
+
 class MPCReadyNet(torch.nn.Module):
     """`nn.Module` mirror of `MPCModel` that takes one-hot inputs -- an
     ONNX-exportable graph of only MatMul/Conv/Relu/mean/Gemm ops (no Embedding,

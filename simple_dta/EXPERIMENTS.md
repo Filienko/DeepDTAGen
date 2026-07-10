@@ -1104,3 +1104,20 @@ GPU-accelerate the AES-based DCF key eval, which is exactly the gap Orca fills.
 Env note: this sandbox is CPU-only; the self-contained PoC is verified on CPU and
 is device-agnostic (uses CUDA when present), and the Orca GPU benchmark runs on the
 user's CUDA box.
+
+**Follow-up (same day) — checkpoint loading, real-accuracy path, install:**
+- `mpc/accuracy.py` + `mpc/model_mpc.load_cnndta` + `--summary/--ckpt` on
+  `export_onnx.py`: load a trained **mean-pool** `CNNDTA` (rebuilt from its run
+  summary, weights loaded), report the model's real cleartext test MSE/CI/rm2/balAcc,
+  and the FSS engine's fidelity to cleartext on real Davis test pairs (MAE ~3e-3 at
+  f=6 on the small model; full-size model overflows the 32-bit ring → the 64-bit Orca
+  path). Verified here on real extracted Davis rows with a random-init model (numbers
+  meaningful only once real weights are supplied); checkpoint round-trip is exact.
+- Fixed the mean-pool `1/L` fixed-point scaling (adaptive high-precision inverse) so
+  real-length sequences don't under/overflow.
+- `mpc/run_ezpc_vm.sh` — scripted EzPC **LLAMA (CPU) / Orca (GPU)** build+run for a
+  larger CUDA VM (this sandbox has no GPU; the script is syntax-checked, ONNX-export
+  step exercised here). `mpc/{setup_env.sh,requirements.txt,INSTALL.md}` capture the
+  full environment + step-by-step install (Python deps, data extraction, PoC run,
+  EzPC CPU build, Orca GPU build). `bash mpc/setup_env.sh` reaches ALL CHECKS PASSED.
+  Data note: `data.rar` unpacks to `data/data/*.csv`; flatten to `data/*.csv`.

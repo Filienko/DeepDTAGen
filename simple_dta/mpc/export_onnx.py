@@ -16,17 +16,17 @@ import numpy as np
 import torch
 
 from data import DEFAULTS, CHARISOSMILEN, CHARPROTLEN
-from models import CNNDTA
-from mpc.model_mpc import MPCReadyNet, to_onehot
+from mpc.model_mpc import MPCReadyNet, load_cnndta, to_onehot
 
 
-def build_and_export(dataset, out_path, batch=1, pool_model=None):
+def build_and_export(dataset, out_path, batch=1, pool_model=None,
+                     summary=None, ckpt=None):
     d = DEFAULTS[dataset]
     Ld, Lp = d["max_smi_len"], d["max_seq_len"]
     Vd, Vp = CHARISOSMILEN + 1, CHARPROTLEN + 1
 
     torch.manual_seed(0)
-    cnn = pool_model or CNNDTA(pool="mean", proj_dim=0, head_layers=2, head_dim=128)
+    cnn = pool_model or load_cnndta(summary, ckpt)
     net = MPCReadyNet(cnn).eval()
 
     drug = torch.zeros(batch, Ld, Vd)
@@ -66,8 +66,11 @@ def main():
     ap.add_argument("--dataset", default="davis", choices=["davis", "kiba", "bindingdb"])
     ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "affinity_fss.onnx"))
     ap.add_argument("--batch", type=int, default=1)
+    ap.add_argument("--summary", default=None, help="runs/<tag>_summary.json to rebuild arch")
+    ap.add_argument("--ckpt", default=None, help="trained mean-pool CNNDTA .pth to export")
     args = ap.parse_args()
-    path, inputs, ref = build_and_export(args.dataset, args.out, args.batch)
+    path, inputs, ref = build_and_export(args.dataset, args.out, args.batch,
+                                         summary=args.summary, ckpt=args.ckpt)
     verify_onnx(path, inputs, ref)
     print("\nNext: feed this ONNX to EzPC OnnxBridge for the GPU-FSS (Orca) 2PC app "
           "-- see mpc/MPC_PORT.md.")
