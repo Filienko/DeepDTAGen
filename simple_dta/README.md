@@ -111,6 +111,8 @@ Partial results (some jobs still training): unilateral cross-attention costs
 | `run_one.sh` | Convenience wrapper to launch a single detached run with logging. |
 | `jobs_batch_july.txt`, `jobs_tower_ablation.txt`, `jobs_attn.txt`, `jobs_attn2.txt`, `jobs_attn3.txt` | Example batch specs (one job per line, see §8). |
 | `mean_baseline.py` | Trivial floor: predicts the train-set mean affinity for every test row, no model at all. Useful sanity check for "is my model doing anything?" |
+| `mpc_cost.py` | **The MPC/FSS op-cost model.** Ranks any config by *secure-inference* cost (secure comparisons, softmax elements, LayerNorm) instead of param count, by running one hooked forward pass on the real model. `--compare` prints the accuracy-vs-cost leaderboard. See §9 item 7 and `FSS_FRAMEWORKS.md`. |
+| `FSS_FRAMEWORKS.md` | **Which secure-computation framework to build on** (Orca / CrypTen / SIGMA / AriaNN / Piranha), the 2PC + CNN-vs-transformer cost rationale, and per-layer port notes. Read before starting the MPC port. |
 | `interpret_protein_tower.py` | **Interpretability, no retraining.** Loads any existing checkpoint and (1) ranks the protein tower's channels by knockout — zero one channel, see how much test MSE gets worse; (2) extracts each top channel's most-activating real sequence window; (3) with `--save-pwm`, fits a proper position-weight-matrix per channel for use by `rule_features.py`. See §10. |
 | `rule_features.py` | Turns a raw protein string into a handful of fixed "does it match this motif" scores, using PWMs fit by `interpret_protein_tower.py`. No learned parameters. |
 | `train_rule.py` | Trains a model with the protein CNN tower *entirely removed*, replaced by the fixed motif-scan scores from `rule_features.py`. See §10. |
@@ -370,8 +372,16 @@ From `EXPERIMENTS.md` — roughly easiest-first:
    never been examined — what do *they* respond to?
 6. **GNN embedding dimensionality:** the Davis atom features are low-rank (~11–21 effective
    dims). Redo the PCA on KIBA/BindingDB embeddings — can the GNN be shrunk without loss?
-7. **MPC cost model:** start tallying, per architecture, the non-linear ops (ReLUs, max-pool
-   comparisons) that dominate MPC cost — this is what all the size-cutting is ultimately for.
+7. ✅ **MPC cost model — DONE (`mpc_cost.py`).** Tallies, per architecture, the non-linear
+   ops that dominate MPC cost (secure ReLU/ELU/max-pool comparisons, softmax elements,
+   LayerNorm) via one hooked forward pass on the real model, and ranks configs by
+   *secure-inference* cost rather than params. Headline finding: the **dilated CNN is both
+   the most accurate (0.848 balAcc) and the cheapest to secure** (zero softmax, fewest
+   comparisons) — softmax cross-attention costs ~2000× more on the FSS heuristic for no
+   accuracy gain. This closes the encoder decision in favour of **CNN + ReLU**, and picks a
+   **2PC FSS** framework (Orca for the GPU port, CrypTen for a prototype). Run
+   `python mpc_cost.py --compare`; full rationale in `FSS_FRAMEWORKS.md`. Natural next step:
+   a CrypTen PoC that runs encrypted inference of a trained `CNNDTA` end-to-end.
 
 When in doubt, add a row to `EXPERIMENTS.md` describing *what* you ran and *why* before you
 launch it. Future-you (and Steven) will thank you.

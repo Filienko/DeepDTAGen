@@ -1010,3 +1010,57 @@ concurrency to 6 parallel jobs x 8 threads = 48 threads total, up from batch
 3's 4x12, since the box was measured near-idle beforehand -- load average
 3.1 on 48 cores, other users' jobs using ~3 cores total). Results: TODO fill
 in once `runs/queue.driver.log` shows all 14 `DONE`.
+
+## 14. MPC/FSS op-cost model + framework decision (2026-07-10)
+
+Closes README §9 open-direction #7 (the MPC cost model), and answers the
+session's actual asks: (a) *which secure-computation framework* to build on, and
+(b) *CNN vs transformer/attention* for the port. Two artifacts:
+
+- **`FSS_FRAMEWORKS.md`** — framework survey for a **2-party (2PC)** secure
+  affinity predictor: Orca (EzPC/GPU-MPC — GPU-native FSS, the pick for the real
+  port), CrypTen (easiest PyTorch on-ramp, but archived — use for a PoC),
+  SIGMA (only if a transformer is unavoidable), AriaNN, Piranha. Plus the
+  per-layer FSS cost table and the softmax/LayerNorm-vs-ReLU rationale.
+- **`mpc_cost.py`** — ranks any config by *secure-inference* cost instead of
+  params. It doesn't hand-derive shapes: it builds the **real** model from the
+  same flags as `train.py` (via the new `train.build_model` / `train.make_parser`
+  refactor) and monkey-patches the low-level torch ops for **one** forward pass,
+  tallying secure comparisons (ReLU/ELU/max-pool = FSS DReLUs), softmax elements,
+  LayerNorm elements, and (contextual) linear MACs from the tensors actually
+  seen. Works for every `--model/--drug-encoder/--fusion/--attn-kind/--pool`
+  combination automatically. No dataset needed — sequence towers run at the
+  dataset's padded length and drug graphs come from a few representative real
+  SMILES via RDKit (op counts are shape-, not value-, driven). `--compare`
+  rebuilds a curated set of configs **from their committed run summaries**
+  (config + params + balAcc all from the same JSON, validated to reproduce each
+  recorded param count exactly), so the accuracy-vs-cost table can't drift.
+
+**Result (`python mpc_cost.py --compare`, Davis, per inference):**
+
+| config | balAcc | params | sec.cmp | softmax | FSSscore | softmax-free |
+|---|---|---|---|---|---|---|
+| dilated CNN (`regB_d1_wd0`) | **0.848** | 800K | **347K** | 0 | **347K** | yes |
+| Config A (`cfgA_protDil123`) | 0.793 | **267K** | 360K | 0 | 360K | yes |
+| CNN concat baseline (`stable_pool_max`) | 0.841 | 882K | 364K | 0 | 364K | yes |
+| F — GCN+cnn, linear cross | 0.831 | 1.08M | 701K | 0 | 16.3M | yes |
+| D — cnn+cnn, linear cross | 0.788 | 1.11M | 725K | 0 | 16.8M | yes |
+| J — raw-atom+cnn, linear cross | 0.803 | 1.79M | 1.16M | 0 | 32.3M | yes |
+| A — cnn+cnn, **softmax** cross | 0.840 | 1.11M | 404K | **717K** | **733M** | NO |
+
+**Decision:** the dilated **CNN dominates** — highest accuracy (0.848, above every
+attention model and DeepDTAGen's 0.820 target) *and* the lowest secure-inference
+cost (fewest comparisons, zero softmax). Softmax cross-attention (A) is ~2000×
+more expensive on the FSS heuristic and doesn't even win on accuracy; even the
+softmax-free linear-attention configs (F/D/J) ~2× the comparison count and add
+LayerNorm cost (the reason "linear attention" is *not* free — its transformer
+residual-norms remain). **The FSS port target is CNN + ReLU** (drug side: SMILES
+CNN, or GCN if graph structure is wanted; avoid GAT's scatter-softmax). Caveats:
+the `FSSscore` weights (softmax≈1000×, LayerNorm≈100× a comparison) are coarse
+order-of-magnitude proxies — the robust signal is the raw comparison count + the
+softmax-free flag; and GAT's internal `torch_geometric` scatter-softmax is not
+intercepted, so a GAT config's softmax cost reads as a lower bound.
+
+**Natural next step (not done here):** a CrypTen PoC that runs encrypted 2PC
+inference of a trained `CNNDTA` end-to-end and reports latency + agreement with
+cleartext — the first "MPC actually runs on our model" datapoint.

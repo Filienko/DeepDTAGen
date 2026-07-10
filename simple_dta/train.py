@@ -78,7 +78,11 @@ def evaluate(model, loader, loader_kind, device, dataset=None):
     return all_metrics(G, P, dataset=dataset), G, P
 
 
-def main():
+def make_parser():
+    """Build the full CLI parser. Exposed (not inlined in main) so mpc_cost.py
+    can parse the exact same architecture flags and stay in lockstep with
+    train.py -- a new --drug-channels / --attn-kind / etc. is picked up by the
+    cost model for free."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", choices=["cnn", "gnn", "attn"], required=True)
     ap.add_argument("--drug-encoder", choices=["cnn", "gnn", "gat", "graphformer", "gine"], default="cnn",
@@ -200,38 +204,13 @@ def main():
     ap.add_argument("--eval-interval", type=int, default=5)
     ap.add_argument("--cuda", type=int, default=None)
     ap.add_argument("--out-dir", default=os.path.join(os.path.dirname(__file__), "runs"))
-    args = ap.parse_args()
+    return ap
 
-    set_seed(args.seed)
-    device = torch.device(f"cuda:{args.cuda}" if args.cuda is not None
-                          and torch.cuda.is_available() else "cpu")
-    os.makedirs(args.out_dir, exist_ok=True)
-    tag = f"{args.model}_{args.dataset}{args.tag_suffix}"
-    gnn_cfg = (f" | node_feat={args.node_feat} gcn_dim={args.gcn_dim} "
-               f"gcn_layers={args.gcn_layers} embed_dim={args.embed_dim}"
-               if args.model == "gnn" else f" | embed_dim={args.embed_dim}")
-    ablate_note = f" | ablate={args.ablate}" if args.ablate != "none" else ""
-    attn_cfg = ""
-    if args.model == "attn":
-        attn_cfg = (f" | drug_enc={args.drug_encoder} prot_enc={args.protein_encoder} "
-                    f"fusion={args.fusion} attn_kind={args.attn_kind} attn_dim={args.attn_dim} "
-                    f"attn_heads={args.attn_heads}"
-                    + (f" cross_direction={args.cross_direction}" if args.fusion == "cross" else "")
-                    + (f" prot_attn_layers={args.prot_attn_layers} prot_attn_window={args.prot_attn_window}"
-                       if args.protein_encoder == "transformer" else "")
-                    + (f" gat_dim={args.gat_dim} gat_layers={args.gat_layers} gat_heads={args.gat_heads} "
-                       f"edge_feats={args.use_edge_feats}"
-                       if args.drug_encoder in ("gnn", "gat") else "")
-                    + (f" drug_attn_dim={args.drug_attn_dim} drug_attn_heads={args.drug_attn_heads} "
-                       f"drug_attn_layers={args.drug_attn_layers} edge_feats={args.use_edge_feats}"
-                       if args.drug_encoder == "graphformer" else ""))
-    print(f"=== {tag} | device={device} | pool={args.pool} | head_dim={args.head_dim} "
-          f"| head_layers={args.head_layers} | seed={args.seed}{gnn_cfg}{ablate_note}{attn_cfg} ===")
 
-    loader_kind = loader_kind_for(args)
-    train_loader, test_loader = build_loaders(loader_kind, args.dataset,
-                                              args.batch_size, featurizer=args.node_feat)
-
+def build_model(args, device=None):
+    """Construct the model from parsed args. Shared by train.py and mpc_cost.py
+    so both build byte-identical architectures from identical flags."""
+    device = device if device is not None else torch.device("cpu")
     if args.model == "cnn":
         _il = lambda s: [int(x) for x in s.split(",")] if s else None
         model = CNNDTA(embed_dim=args.embed_dim, pool=args.pool, head_dim=args.head_dim,
@@ -268,6 +247,43 @@ def main():
                         drug_kernel=args.drug_kernel, prot_kernel=args.prot_kernel,
                         pool=args.pool, head_dim=args.head_dim, head_layers=args.head_layers,
                         dropout=args.dropout).to(device)
+    return model
+
+
+def main():
+    args = make_parser().parse_args()
+
+    set_seed(args.seed)
+    device = torch.device(f"cuda:{args.cuda}" if args.cuda is not None
+                          and torch.cuda.is_available() else "cpu")
+    os.makedirs(args.out_dir, exist_ok=True)
+    tag = f"{args.model}_{args.dataset}{args.tag_suffix}"
+    gnn_cfg = (f" | node_feat={args.node_feat} gcn_dim={args.gcn_dim} "
+               f"gcn_layers={args.gcn_layers} embed_dim={args.embed_dim}"
+               if args.model == "gnn" else f" | embed_dim={args.embed_dim}")
+    ablate_note = f" | ablate={args.ablate}" if args.ablate != "none" else ""
+    attn_cfg = ""
+    if args.model == "attn":
+        attn_cfg = (f" | drug_enc={args.drug_encoder} prot_enc={args.protein_encoder} "
+                    f"fusion={args.fusion} attn_kind={args.attn_kind} attn_dim={args.attn_dim} "
+                    f"attn_heads={args.attn_heads}"
+                    + (f" cross_direction={args.cross_direction}" if args.fusion == "cross" else "")
+                    + (f" prot_attn_layers={args.prot_attn_layers} prot_attn_window={args.prot_attn_window}"
+                       if args.protein_encoder == "transformer" else "")
+                    + (f" gat_dim={args.gat_dim} gat_layers={args.gat_layers} gat_heads={args.gat_heads} "
+                       f"edge_feats={args.use_edge_feats}"
+                       if args.drug_encoder in ("gnn", "gat") else "")
+                    + (f" drug_attn_dim={args.drug_attn_dim} drug_attn_heads={args.drug_attn_heads} "
+                       f"drug_attn_layers={args.drug_attn_layers} edge_feats={args.use_edge_feats}"
+                       if args.drug_encoder == "graphformer" else ""))
+    print(f"=== {tag} | device={device} | pool={args.pool} | head_dim={args.head_dim} "
+          f"| head_layers={args.head_layers} | seed={args.seed}{gnn_cfg}{ablate_note}{attn_cfg} ===")
+
+    loader_kind = loader_kind_for(args)
+    train_loader, test_loader = build_loaders(loader_kind, args.dataset,
+                                              args.batch_size, featurizer=args.node_feat)
+
+    model = build_model(args, device)
     print(f"Trainable parameters: {count_params(model):,}")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
