@@ -130,6 +130,26 @@ Regenerate this table any time with `python mpc_cost.py --compare`.
 
 ---
 
+## 6. The port itself — `mpc/` (runnable)
+
+The recommendation above is implemented in [`mpc/`](mpc/) as a **2-party, FSS,
+GPU-optimizable** secure inference of the affinity CNN. Two tracks:
+
+- **Runnable now:** [`mpc/fss_infer.py`](mpc/fss_infer.py) — a self-contained FSS
+  engine (fixed-point ring + `sycret` DCF **DReLU** + Beaver-triple select) that
+  runs `MPCReadyNet` end-to-end and verifies it matches cleartext. At `f=6` (its
+  32-bit ring's headroom) it reproduces the plaintext prediction to ~0.1%; the
+  `--sweep` shows the overflow ceiling above that — the empirical case for a
+  64-bit GPU-FSS backend.
+- **Production GPU-FSS:** [`mpc/MPC_PORT.md`](mpc/MPC_PORT.md) — export to ONNX
+  ([`mpc/export_onnx.py`](mpc/export_onnx.py)) and run under **Orca** (EzPC/GPU-MPC),
+  whose CUDA DReLU/truncation kernels over a 64-bit ring are where the *MPC itself*
+  becomes GPU-optimized. `python -m mpc.test_fss` runs the correctness checks.
+
+The model is reshaped so every op is an FSS kernel: embedding → one-hot·table
+matmul, global **mean** pool (not max), static shapes, ReLU-only (see the per-layer
+table in §4 and `MPC_PORT.md`).
+
 ## Sources
 - Orca — ePrint [2023/206](https://eprint.iacr.org/2023/206); code: `mpc-msri/EzPC` (`GPU-MPC`, `sytorch`).
 - SIGMA — ePrint [2023/1269](https://eprint.iacr.org/2023/1269); PoPETs 2024.

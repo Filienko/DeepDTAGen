@@ -32,6 +32,9 @@ simple_dta/runs/*.log
 simple_dta/runs/*_pred.txt
 simple_dta/runs/*_true.txt
 
+# MPC/FSS export artifacts (regenerable via mpc/export_onnx.py)
+simple_dta/mpc/*.onnx
+
 # Editor swap files
 *.swp
 *.swo

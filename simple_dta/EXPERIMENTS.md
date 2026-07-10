@@ -1064,3 +1064,43 @@ intercepted, so a GAT config's softmax cost reads as a lower bound.
 **Natural next step (not done here):** a CrypTen PoC that runs encrypted 2PC
 inference of a trained `CNNDTA` end-to-end and reports latency + agreement with
 cleartext — the first "MPC actually runs on our model" datapoint.
+
+## 15. GPU-optimized FSS inference PoC — `mpc/` (2026-07-10)
+
+Follow-up ask: *ensure the MPC implementation itself is GPU-optimized, hence FSS*
+(explicitly not CrypTen — GMW-style ReLU is multi-round and, per CryptGPU, not even
+faster on GPU). Threat model: **2PC, public weights / secret input** (server holds
+the model, client holds the private drug+protein), which makes every conv/linear/
+mean-pool local and confines interaction to ReLU. New package `simple_dta/mpc/`.
+
+**What was built + verified (`python -m mpc.test_fss`, all pass):**
+- **`model_mpc.py` — FSS-ready CNN.** `MPCModel` is written once against a
+  `Backend` interface (`ClearBackend` reference; `FSSBackend` in `fss_infer.py`),
+  reshaped so every op is an FSS/Orca kernel: **embedding → one-hot·table matmul**
+  (tokens are the secret input; no secret-index gather in FSS), **global mean pool**
+  (not max — mean is free, max is a log(L) round tree), static shapes, ReLU-only,
+  no dropout. Verified bit-exact against the original embedding `CNNDTA(pool=mean)`
+  (max diff 0.0). `MPCReadyNet` is the ONNX-exportable `nn.Module` twin.
+- **`fss_infer.py` — self-contained 2PC FSS engine (runnable now).** Fixed-point
+  ring `Z_{2^32}` (torch int64), additive 2-of-2 shares, local truncation; **ReLU
+  via a real FSS DCF DReLU** (`sycret`, AriaNN's Rust core — one online round,
+  element-wise key eval) + **Beaver-triple** `x·DReLU(x)` select. Device-agnostic,
+  batched. At `f=6` the encrypted prediction matches cleartext to **mean abs err
+  6e-3 (~0.1%)**, 6 FSS-DReLU calls / 12 online rounds. The `--sweep` shows `f≥8`
+  overflows `sycret`'s **32-bit** ring — the concrete precision ceiling that
+  motivates a **64-bit GPU-FSS** backend.
+- **`export_onnx.py` + `MPC_PORT.md` — production GPU-FSS route.** Exports
+  `MPCReadyNet` to ONNX (MatMul/Conv/Relu/ReduceMean/Gemm only; onnxruntime matches
+  torch to ~1e-9) and documents the **Orca (EzPC/GPU-MPC)** build + 2PC run
+  commands (LLAMA CPU-FSS for a correctness check, CUDA/Orca for GPU), the
+  fixed-point config (64-bit ring, f=13–16, stochastic truncation), and the
+  GPU-optimization checklist (depth=rounds, mean-pool, batch for throughput,
+  embedding-as-matmul is the dominant crypto cost).
+
+**Split of responsibility:** `sycret`/G1 is the *runnable, verifiable-here* FSS
+correctness artifact; **Orca/G2 is where the FSS is actually GPU-optimized** (CUDA
+DReLU/truncation kernels over a 64-bit ring) — a pure-PyTorch engine can't
+GPU-accelerate the AES-based DCF key eval, which is exactly the gap Orca fills.
+Env note: this sandbox is CPU-only; the self-contained PoC is verified on CPU and
+is device-agnostic (uses CUDA when present), and the Orca GPU benchmark runs on the
+user's CUDA box.
