@@ -1,13 +1,29 @@
 # The 3 flagship models
 
-This folder is a pointer, not a copy: the actual model code lives one level up
-in `../models.py` and `../train.py` (all three models share that code — they're
-just different flag combinations). What's here is a **run script per model**
-with the right flags already filled in, so you don't need to memorize anything
-to reproduce or extend them.
+This folder gives you two ways to get each model, depending on what you need:
 
-The goal of this document is to help you run the script, and read the `_summary.json` it
-produces.
+- **`standalone_<model>.py`** — a single, fully self-contained file per
+  model. The architecture (every layer, every hyperparameter) lives entirely
+  in that one file, with every branch not used by that specific model
+  stripped out and every hyperparameter hardcoded as a constant at the top.
+  Nothing here imports from `../models.py`, `../attention.py`, or
+  `../train.py` — those files are general-purpose/configurable and cover
+  ~40 architectures explored during development, so reading them to answer
+  "what does F actually compute" means tracing through a lot of irrelevant
+  branches. **If you're implementing the MPC port, start here** — each
+  file's model class(es) are the complete spec for that architecture. (Data
+  loading and metrics aren't architecture-specific, so those are still
+  imported from `../data.py` / `../metrics.py` rather than duplicated.)
+- **`run_<model>.sh`** — a thin wrapper that calls the shared, configurable
+  `../train.py` with the right flags for that model already filled in.
+  Useful for quick reproduction using the same "development" codebase
+  everything else in this repo uses, but you have to go read `../models.py`
+  to see what the flags actually build.
+
+Both train numerically the same model (identical architecture, identical
+hyperparameters) — pick whichever fits what you're doing. The goal of this
+document is to help you run either one and read the `_summary.json` it
+produces. Everything below is reference detail.
 
 ## The 3 models at a glance
 
@@ -17,8 +33,9 @@ produces.
 | Role | Our accuracy ceiling | Our small/cheap reference | Our best **MPC candidate** |
 | Params | ~800K | ~267K | ~1.08M |
 | Davis balanced accuracy | **0.848** | 0.795 | 0.831 |
-| Script | `run_regB.sh` | `run_configA.sh` | `run_F.sh` |
-| Model class | `CNNDTA` (`../models.py`) | `CNNDTA` (`../models.py`) | `AttnDTA` (`../models.py`, `../attention.py`) |
+| Standalone file | `standalone_regB.py` | `standalone_configA.py` | `standalone_F.py` |
+| Dev-codebase script | `run_regB.sh` | `run_configA.sh` | `run_F.sh` |
+| Dev-codebase model class | `CNNDTA` (`../models.py`) | `CNNDTA` (`../models.py`) | `AttnDTA` (`../models.py`, `../attention.py`) |
 | Full history | `EXPERIMENTS.md` §8 | `EXPERIMENTS.md` §8 | `EXPERIMENTS.md` §12 |
 
 ("Balanced accuracy" = our headline metric, averaged over 8 affinity
@@ -54,15 +71,34 @@ softmax is the thing to avoid: `EXPERIMENTS.md` §10.3 and §12.1.
 
 ## How to run one
 
+**Standalone files** (recommended if you're reading code to understand or
+port the architecture):
+
+```sh
+cd simple_dta/best_models
+python standalone_regB.py                        # Davis, seed 4221 (the reference config)
+python standalone_configA.py --dataset kiba       # same model, different dataset
+python standalone_F.py --dataset davis --seed 7   # same model/dataset, different seed
+python standalone_regB.py --epochs 4              # quick smoke test
+```
+
+All three accept the same flags: `--dataset {davis,kiba,bindingdb}`,
+`--seed`, `--epochs`, `--tag-suffix`, `--out-dir`. Everything about the
+*architecture itself* (channel widths, kernel sizes, dilations, head
+size, attention dim/heads, ...) is a hardcoded constant at the top of the
+file, not a flag — that's the point of these files: open one, and the
+constants block plus the model class(es) right below it are the entire
+model definition, nothing hidden behind a flag combination.
+
+**Dev-codebase wrapper scripts** (for quick reproduction alongside the rest
+of the experiment codebase):
+
 ```sh
 cd simple_dta/best_models
 ./run_regB.sh            # trains RegB on Davis, seed 4221 (the reference config)
 ./run_configA.sh kiba    # same model, different dataset
 ./run_F.sh davis 7       # same model/dataset, different seed
 ```
-
-Each script is just `train.py` with the model's exact flags hardcoded — open
-any one of them to see precisely what it runs. All three accept:
 
 ```
 ./run_<model>.sh [dataset] [seed] [tag_suffix]
@@ -74,20 +110,23 @@ any one of them to see precisely what it runs. All three accept:
 | `seed` | any integer | `4221` (matches the reference numbers above) |
 | `tag_suffix` | free text, names the output files | auto-built from dataset+seed |
 
-Other things you can change:
-- **Epochs** (for a quick test instead of a full run): `EPOCHS=4 ./run_regB.sh`
-- **Everything else** (head size, dilation, attention width, ...) — these
-  scripts intentionally hardcode the model definition. To try a *different*
-  architecture, copy a script and edit the flags, or see `../README.md` §4
-  for the full flag reference.
+- Quick test instead of a full run: `EPOCHS=4 ./run_regB.sh`
+- To try a *different* architecture (not one of these three), copy a script
+  and edit the flags, or see `../README.md` §4 for the full flag reference —
+  that's what the configurable `../train.py` is for.
 
 **Training time (Davis, this CPU box):** RegB/ConfigA ~2-3h each. F is much
 slower (graph batching + attention) — budget several hours. KIBA is ~4x more
-data than Davis; BindingDB is in between.
+data than Davis; BindingDB is in between. Same either way you run it.
 
 ## Finding results
 
-Every run writes to `../runs/`:
+Every run (standalone or wrapper script) writes to `../runs/`. Tags differ
+slightly by which path you used — standalone files write
+`regB_<dataset>_s<seed>...`, `configA_...`, `F_...`; the wrapper scripts
+write `cnn_<dataset>_regB_...`, `cnn_<dataset>_configA_...`,
+`attn_<dataset>_F_...` (via `train.py`'s own tag format) — but the file
+contents are the same shape either way:
 - `<tag>_summary.json` — final metrics (MSE, CI, rm2, Pearson, balanced
   accuracy per threshold) plus the exact config used.
 - `<tag>_pred.txt` / `<tag>_true.txt` — raw predictions vs. truth, so you can
