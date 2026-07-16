@@ -15,18 +15,19 @@ from mpc.model_mpc import MPCModel
 
 
 def test_g0_onehot_equals_embedding():
-    torch.manual_seed(0)
-    m = CNNDTA(pool="mean", proj_dim=0, head_layers=2, head_dim=128).eval()
-    mpc = MPCModel(m)
     d = DEFAULTS["davis"]
-    xd = torch.randint(0, CHARISOSMILEN + 1, (4, d["max_smi_len"]))
-    xt = torch.randint(0, CHARPROTLEN + 1, (4, d["max_seq_len"]))
-    with torch.no_grad():
-        ref = m((xd, xt, None))
-        got = mpc.forward_tokens_clear(xd, xt)
-    assert torch.allclose(ref, got, atol=1e-5), (ref - got).abs().max()
-    print("G0 OK: one-hot MPCModel == embedding CNNDTA (max diff "
-          f"{(ref-got).abs().max().item():.1e})")
+    for pool in ("mean", "max"):
+        torch.manual_seed(0)
+        m = CNNDTA(pool=pool, proj_dim=0, head_layers=2, head_dim=128).eval()
+        mpc = MPCModel(m)
+        xd = torch.randint(0, CHARISOSMILEN + 1, (4, d["max_smi_len"]))
+        xt = torch.randint(0, CHARPROTLEN + 1, (4, d["max_seq_len"]))
+        with torch.no_grad():
+            ref = m((xd, xt, None))
+            got = mpc.forward_tokens_clear(xd, xt)
+        assert torch.allclose(ref, got, atol=1e-5), (pool, (ref - got).abs().max())
+        print(f"G0 OK ({pool}-pool): one-hot MPCModel == embedding CNNDTA (max diff "
+              f"{(ref-got).abs().max().item():.1e})")
 
 
 def test_fixedpoint_roundtrip():
@@ -64,11 +65,45 @@ def test_g1_end_to_end():
           f"{be.relu_calls} DReLUs, {be.online_rounds} online rounds)")
 
 
+def test_secure_max_pool():
+    """FSS global max-pool (secure_max tournament) == cleartext max over L."""
+    dev = torch.device("cpu")
+    d = F.Dealer(dev)
+    be = F.FSSBackend(d, f=8, device=dev)
+    x = torch.randn(2, 3, 17, dtype=torch.float64) * 4      # [B,C,L], odd L
+    sh = F.share(F.encode(x, 8))
+    out = be.max_pool(sh)
+    got = F.decode(F.reconstruct(out), 8)
+    exp = x.max(dim=2).values
+    assert torch.allclose(got, exp, atol=2e-2), (got - exp).abs().max()
+    print(f"OK: secure FSS max-pool == cleartext max (L=17 -> {be.relu_calls} "
+          "tournament DReLUs)")
+
+
+def test_g1_maxpool_end_to_end():
+    """A MAX-pool CNN+CNN (the user's default checkpoint kind) runs under FSS."""
+    dev = torch.device("cpu")
+    m = F.build_demo_model("small", pool="max")
+    mpc = MPCModel(m)
+    assert mpc.pool_mode == "max"
+    xd, xt = F.make_inputs("davis", batch=6, seq_scale=0.05)
+    with torch.no_grad():
+        clear = mpc.forward_tokens_clear(xd, xt).to(torch.float64)
+    pred, be, _ = F._run(mpc, xd, xt, f=6, device=dev)
+    mae = (pred - clear).abs().mean().item()
+    assert mae < 5e-2, f"max-pool FSS too lossy at f=6: mae={mae}"
+    print(f"G1-max OK: MAX-pool CNN+CNN FSS == cleartext at f=6 (mae {mae:.2e}, "
+          f"{be.relu_calls} DReLUs, {be.online_rounds} rounds -- note the extra "
+          "DReLUs vs mean-pool)")
+
+
 if __name__ == "__main__":
     np.random.seed(0)
     torch.manual_seed(0)
     test_g0_onehot_equals_embedding()
     test_fixedpoint_roundtrip()
     test_secure_relu()
+    test_secure_max_pool()
     test_g1_end_to_end()
+    test_g1_maxpool_end_to_end()
     print("\nALL MPC/FSS CHECKS PASSED")

@@ -54,8 +54,15 @@ class Backend:
         raise NotImplementedError
 
     def mean_pool(self, x):
-        """x: [B, C, L] -> [B, C] (mean over L)."""
+        """x: [B, C, L] -> [B, C] (mean over L). Free/linear under FSS."""
         raise NotImplementedError
+
+    def max_pool(self, x):
+        """x: [B, C, L] -> [B, C] (max over L). A log(L) DReLU tournament under FSS."""
+        raise NotImplementedError
+
+    def pool(self, x, mode):
+        return self.mean_pool(x) if mode == "mean" else self.max_pool(x)
 
     def concat(self, a, b):
         """concat two [B, D] tensors along dim 1."""
@@ -81,6 +88,9 @@ class ClearBackend(Backend):
     def mean_pool(self, x):
         return x.mean(dim=2)
 
+    def max_pool(self, x):
+        return x.max(dim=2).values
+
     def concat(self, a, b):
         return torch.cat([a, b], dim=1)
 
@@ -98,8 +108,10 @@ class MPCModel:
         assert cnndta.drug is not None and cnndta.protein is not None, \
             "MPCModel needs the full two-tower model (ablate='none')"
         assert cnndta.proj_dim == 0, "port the proj_dim=0 variant (no bottleneck)"
-        assert cnndta.protein.pool == "mean" and cnndta.drug.pool == "mean", \
-            "FSS target must be a mean-pool model (max-pool costs comparison rounds)"
+        assert cnndta.drug.pool in ("mean", "max") and cnndta.protein.pool == cnndta.drug.pool, (
+            "MPC port supports pool in {mean,max} (same for both towers). mean is free "
+            "under FSS; max is a log(L) DReLU tournament (works, just costlier).")
+        self.pool_mode = cnndta.drug.pool
         cnndta.eval()
         self.drug_vocab = CHARISOSMILEN + 1
         self.prot_vocab = CHARPROTLEN + 1
@@ -116,7 +128,7 @@ class MPCModel:
         x = be.embed(x_onehot, table)          # [B, E, L]
         for w, b in convs:
             x = be.relu(be.conv1d(x, w, b))
-        return be.mean_pool(x)                  # [B, C]
+        return be.pool(x, self.pool_mode)       # [B, C]
 
     def forward(self, be, drug_onehot, prot_onehot):
         d = self._tower(be, drug_onehot, self.drug_table, self.drug_convs)
@@ -143,9 +155,10 @@ def load_cnndta(summary_path=None, ckpt_path=None):
     train.build_model so the architecture always matches the checkpoint. With no
     summary, returns a default random-init mean-pool CNNDTA (pipeline testing).
 
-    The checkpoint must be a `simple_dta` **mean-pool** CNNDTA (trained with
-    `train.py --pool mean`), not the original DeepDTAGen model -- MPC requires
-    mean pooling (max-pool costs comparison rounds; see FSS_FRAMEWORKS.md)."""
+    The checkpoint must be a `simple_dta` **CNN+CNN** `CNNDTA` (trained with
+    `train.py --model cnn`, either `--pool mean` or the default `--pool max`), not
+    the original DeepDTAGen model. mean-pool is free under FSS; max-pool works too
+    (a log(L) DReLU tournament, just costlier -- see FSS_FRAMEWORKS.md)."""
     import json
     import train
     from models import CNNDTA
@@ -154,16 +167,15 @@ def load_cnndta(summary_path=None, ckpt_path=None):
     else:
         with open(summary_path) as f:
             summary = json.load(f)
-        assert summary.get("model") == "cnn", "MPC port targets the CNN model"
+        assert summary.get("model") == "cnn", "MPC port targets the CNN (CNN+CNN) model"
         args = train.make_parser().parse_args(
             ["--model", "cnn", "--dataset", summary.get("dataset", "davis")])
         for k, v in summary.items():
             if k not in ("model", "dataset") and hasattr(args, k):
                 setattr(args, k, v)
-        if args.pool != "mean":
-            raise ValueError(
-                f"checkpoint pool={args.pool!r}; MPC needs a mean-pool model. "
-                "Retrain with `train.py --model cnn --pool mean`.")
+        if args.pool not in ("mean", "max"):
+            raise ValueError(f"checkpoint pool={args.pool!r}; MPC supports mean|max "
+                             "(maxmean not supported).")
         model = train.build_model(args)
     if ckpt_path:
         model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
@@ -180,6 +192,7 @@ class MPCReadyNet(torch.nn.Module):
     def __init__(self, cnndta):
         super().__init__()
         mpc = MPCModel(cnndta)
+        self.pool_mode = mpc.pool_mode
         self.drug_vocab, self.prot_vocab = mpc.drug_vocab, mpc.prot_vocab
         self.drug_table = torch.nn.Parameter(mpc.drug_table.clone(), requires_grad=False)
         self.prot_table = torch.nn.Parameter(mpc.prot_table.clone(), requires_grad=False)
@@ -204,7 +217,7 @@ class MPCReadyNet(torch.nn.Module):
         x = torch.matmul(x_onehot, table).transpose(1, 2)  # [B,E,L]
         for c in convs:
             x = torch.relu(c(x))
-        return x.mean(dim=2)
+        return x.mean(dim=2) if self.pool_mode == "mean" else x.max(dim=2).values
 
     def forward(self, drug_onehot, prot_onehot):
         d = self._tower(drug_onehot, self.drug_table, self.drug_convs)

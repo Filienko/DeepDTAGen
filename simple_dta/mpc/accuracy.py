@@ -53,12 +53,12 @@ def cleartext_metrics(model, dataset, split, batch_size, max_eval=None):
     return all_metrics(G, P, dataset=dataset), G, P
 
 
-def fss_fidelity(dataset, n, seq_len, frac_bits, device):
+def fss_fidelity(dataset, n, seq_len, frac_bits, device, pool="mean", profile=False):
     """On n REAL test pairs (truncated to seq_len), compare FSS vs cleartext
     predictions -- on the small model that fits sycret's 32-bit ring. Shows the
     FSS engine is faithful; the full-size checkpoint's full-length FSS run is the
     64-bit Orca path (MPC_PORT.md / run_ezpc_vm.sh)."""
-    model = FSS.build_demo_model("small")   # fits the 32-bit fixed-point budget
+    model = FSS.build_demo_model("small", pool=pool)   # fits the 32-bit fixed-point budget
     mpc = MPCModel(model)
     smiles, prots, ys = load_csv(dataset, "test")
     d = DEFAULTS[dataset]
@@ -68,12 +68,14 @@ def fss_fidelity(dataset, n, seq_len, frac_bits, device):
     xt = torch.stack([torch.from_numpy(label_encode(p, Lp, CHARPROTSET)) for p in prots[:n]])
     with torch.no_grad():
         clear = mpc.forward_tokens_clear(xd, xt).to(torch.float64)
-    fss_pred, be, dt = FSS._run(mpc, xd, xt, frac_bits, device)
+    fss_pred, be, dt = FSS._run(mpc, xd, xt, frac_bits, device, profile=profile)
     err = (fss_pred - clear).abs()
     if clear.numel() > 1 and clear.std() > 1e-9 and fss_pred.std() > 1e-9:
         pear = float(np.corrcoef(clear.numpy(), fss_pred.numpy())[0, 1])
     else:
         pear = float("nan")
+    if profile:
+        FSS.print_profile(be, n, dt)
     return dict(mae=err.mean().item(), maxerr=err.max().item(), pearson=pear,
                 relu=be.relu_calls, rounds=be.online_rounds, secs=dt,
                 Ls=Ls, Lp=Lp, clear=clear, fss=fss_pred)
@@ -93,6 +95,8 @@ def main():
                          "sycret's 32-bit ring")
     ap.add_argument("--frac-bits", type=int, default=6)
     ap.add_argument("--device", default="cpu")
+    ap.add_argument("--profile", action="store_true",
+                    help="print per-op runtime + single-sample latency for the FSS run")
     args = ap.parse_args()
 
     device = torch.device(args.device if (args.device == "cpu" or torch.cuda.is_available())
@@ -110,7 +114,8 @@ def main():
 
     print(f"\n  FSS-engine fidelity (small model, sycret 32-bit ring) on real {args.dataset} "
           "test pairs:")
-    fid = fss_fidelity(args.dataset, args.n_fss, args.fss_seq_len, args.frac_bits, device)
+    fid = fss_fidelity(args.dataset, args.n_fss, args.fss_seq_len, args.frac_bits, device,
+                       pool=model.drug.pool, profile=args.profile)
     print(f"    {args.n_fss} pairs @ drugL={fid['Ls']} protL={fid['Lp']}, f={args.frac_bits}, "
           f"{device}")
     print(f"    FSS vs cleartext  MAE {fid['mae']:.3e} | max {fid['maxerr']:.3e} "

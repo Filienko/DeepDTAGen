@@ -96,12 +96,39 @@ def reconstruct(sh):
 class FSSBackend(Backend):
     """Runs MPCModel under the FSS protocol. Weights public, activations shared."""
 
-    def __init__(self, dealer, f, device):
+    def __init__(self, dealer, f, device, profile=False):
         self.d = dealer
         self.f = f
         self.device = device
         self.relu_calls = 0
         self.online_rounds = 0  # sequential comm rounds (DReLU reveal + Beaver reveals)
+        from collections import defaultdict
+        self.op_time = defaultdict(float)
+        self.op_calls = defaultdict(int)
+        if profile:
+            self._install_profiling()
+
+    def _install_profiling(self):
+        """Wrap each op method to record per-op wall time + call count. Note:
+        max_pool calls relu internally, so its time/relu-count nest (flagged in
+        the report). CUDA-synced so GPU timings are real, not launch-queue times."""
+        import functools
+        cuda = self.device.type == "cuda"
+        for name in ("embed", "conv1d", "linear", "relu", "mean_pool", "max_pool", "concat"):
+            orig = getattr(self, name)
+
+            @functools.wraps(orig)
+            def timed(*a, _n=name, _f=orig, **k):
+                if cuda:
+                    torch.cuda.synchronize()
+                t0 = time.perf_counter()
+                out = _f(*a, **k)
+                if cuda:
+                    torch.cuda.synchronize()
+                self.op_time[_n] += time.perf_counter() - t0
+                self.op_calls[_n] += 1
+                return out
+            setattr(self, name, timed)
 
     # weights are public floats -> fixed-point ring tensors
     def _w(self, weight):
@@ -157,6 +184,32 @@ class FSSBackend(Backend):
         s1 = (x[1].sum(dim=2) * inv) & MASK
         return self._trunc_by((s0, s1), F2)
 
+    def _sub(self, a, b):
+        return ((a[0] - b[0]) & MASK, (a[1] - b[1]) & MASK)
+
+    def _add(self, a, b):
+        return ((a[0] + b[0]) & MASK, (a[1] + b[1]) & MASK)
+
+    def secure_max(self, a, b):
+        """max(a,b) = a + ReLU(b - a), one FSS DReLU + Beaver select (reuses relu)."""
+        return self._add(a, self.relu(self._sub(b, a)))
+
+    def max_pool(self, x):
+        # Global max over L (dim 2) as a log(L) tournament of secure_max on adjacent
+        # halves -- each round is one vectorized FSS DReLU over [B, C, L/2]. This is
+        # the FSS cost of max vs mean (see --profile); mean is free, max is comparisons.
+        s0, s1 = x
+        while s0.shape[2] > 1:
+            L = s0.shape[2]
+            if L % 2:                                    # odd: carry the last column
+                s0 = torch.cat([s0, s0[:, :, -1:]], dim=2)
+                s1 = torch.cat([s1, s1[:, :, -1:]], dim=2)
+                L += 1
+            a = (s0[:, :, 0::2], s1[:, :, 0::2])
+            b = (s0[:, :, 1::2], s1[:, :, 1::2])
+            s0, s1 = self.secure_max(a, b)
+        return s0[:, :, 0] & MASK, s1[:, :, 0] & MASK
+
     def concat(self, a, b):
         return (torch.cat([a[0], b[0]], dim=1) & MASK,
                 torch.cat([a[1], b[1]], dim=1) & MASK)
@@ -189,27 +242,48 @@ class FSSBackend(Backend):
         return r0, r1
 
 
-def _run(mpc, smiles, target, f, device):
+def _run(mpc, smiles, target, f, device, profile=False):
     dealer = Dealer(device)
-    be = FSSBackend(dealer, f, device)
+    be = FSSBackend(dealer, f, device, profile=profile)
     xd = encode(to_onehot(smiles, mpc.drug_vocab).to(torch.float64), f).to(device)
     xt = encode(to_onehot(target, mpc.prot_vocab).to(torch.float64), f).to(device)
+    if device.type == "cuda":
+        torch.cuda.synchronize()
     t0 = time.time()
     out = mpc.forward(be, share(xd), share(xt))
+    if device.type == "cuda":
+        torch.cuda.synchronize()
     dt = time.time() - t0
     return decode(reconstruct(out), f).squeeze(-1), be, dt
 
 
-def build_demo_model(scale):
-    """A CNNDTA(pool=mean). `scale`='small' downsizes towers/head so the 32-bit
+def print_profile(be, n_samples, total_secs):
+    """Per-op timing table + single-sample latency. Ops are timed inclusively
+    (max_pool nests its internal relu/DReLUs)."""
+    print(f"\n  per-op FSS runtime (batch={n_samples}, {be.device}):")
+    print(f"    {'op':<11}{'calls':>7}{'total_ms':>11}{'ms/call':>10}{'ms/sample':>11}")
+    for name in ("embed", "conv1d", "relu", "max_pool", "mean_pool", "linear", "concat"):
+        c = be.op_calls.get(name, 0)
+        if not c:
+            continue
+        tot = be.op_time[name] * 1e3
+        print(f"    {name:<11}{c:>7}{tot:>11.2f}{tot / c:>10.2f}{tot / n_samples:>11.2f}")
+    print(f"    {'end-to-end':<11}{'':>7}{total_secs*1e3:>11.2f}{'':>10}"
+          f"{total_secs*1e3/n_samples:>11.2f}   <- single-sample latency")
+    print(f"    (max_pool time includes its internal DReLUs; {be.relu_calls} DReLU calls, "
+          f"{be.online_rounds} online rounds total)")
+
+
+def build_demo_model(scale, pool="mean"):
+    """A CNNDTA(pool=...). `scale`='small' downsizes towers/head so the 32-bit
     fixed-point PoC has precision headroom; 'full' is the real architecture."""
     torch.manual_seed(0)
     if scale == "small":
-        m = CNNDTA(pool="mean", proj_dim=0, head_layers=2, head_dim=64,
+        m = CNNDTA(pool=pool, proj_dim=0, head_layers=2, head_dim=64,
                    drug_channels=[8, 12], prot_channels=[8, 12],
                    drug_kernel=4, prot_kernel=8, embed_dim=32)
     else:
-        m = CNNDTA(pool="mean", proj_dim=0, head_layers=2, head_dim=128)
+        m = CNNDTA(pool=pool, proj_dim=0, head_layers=2, head_dim=128)
     # Give a realistic affinity output scale (a trained model predicts ~5-10, not
     # ~0 like a random init) so the error metrics below are interpretable. Only the
     # final public bias changes; it does not affect the protocol.
@@ -244,6 +318,8 @@ def main():
     ap.add_argument("--seq-scale", type=float, default=0.1,
                     help="fraction of full padded sequence length (keeps the PoC fast)")
     ap.add_argument("--sweep", action="store_true", help="frac-bit precision sweep")
+    ap.add_argument("--profile", action="store_true",
+                    help="per-op runtime breakdown + single-sample latency")
     args = ap.parse_args()
 
     device = torch.device(args.device if (args.device == "cpu" or torch.cuda.is_available())
@@ -266,15 +342,18 @@ def main():
             print(f"{f:>9} {err.max().item():>12.2e} {err.mean().item():>13.2e} {rel:>9.2%}")
         return
 
-    pred, be, dt = _run(mpc, xd, xt, args.frac_bits, device)
+    pred, be, dt = _run(mpc, xd, xt, args.frac_bits, device, profile=args.profile)
     err = (pred - clear).abs()
-    print(f"=== FSS 2PC inference | scale={args.scale} | dev={device} | f={args.frac_bits} ===")
+    print(f"=== FSS 2PC inference | scale={args.scale} pool={mpc.pool_mode} | dev={device} "
+          f"| f={args.frac_bits} ===")
     print(f"  inputs: {args.batch} pairs | drug L={xd.shape[1]} prot L={xt.shape[1]}")
     print(f"  cleartext pred : {[round(v,4) for v in clear.tolist()]}")
     print(f"  FSS pred       : {[round(v,4) for v in pred.tolist()]}")
     print(f"  max abs err    : {err.max().item():.3e}   mean abs err: {err.mean().item():.3e}")
     print(f"  ReLU (FSS DReLU) calls: {be.relu_calls} | online rounds: {be.online_rounds}")
     print(f"  wall time      : {dt:.2f}s  ({device})")
+    if args.profile:
+        print_profile(be, args.batch, dt)
 
 
 if __name__ == "__main__":

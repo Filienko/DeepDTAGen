@@ -1121,3 +1121,23 @@ user's CUDA box.
   full environment + step-by-step install (Python deps, data extraction, PoC run,
   EzPC CPU build, Orca GPU build). `bash mpc/setup_env.sh` reaches ALL CHECKS PASSED.
   Data note: `data.rar` unpacks to `data/data/*.csv`; flatten to `data/*.csv`.
+
+**Follow-up (verified research + max-pool + timing + NssMPClib):**
+- **Max-pool support** (user has `--pool max` CNN+CNN weights → no retrain): secure
+  max via `max(a,b)=a+ReLU(b−a)` → global max is a log(L) DReLU tournament
+  (`FSSBackend.max_pool`). `MPCModel`/`MPCReadyNet`/`load_cnndta` are pool-agnostic;
+  verified `MPCModel==CNNDTA` exact for both pools and FSS max-pool==cleartext. The
+  extra DReLUs (16 vs 6 on the small model) are the FSS cost of max vs mean.
+- **Timing** (`--profile`): per-op wall-time (embed/conv/relu-DReLU/pool/linear) +
+  call counts + single-sample latency, in `fss_infer.py` and `accuracy.py`. Shows
+  **ReLU/DReLU dominates** FSS runtime (as predicted); linear/pool are cheap.
+- **Verified EzPC reality (corrects earlier docs):** EzPC **OnnxBridge is CPU-only**
+  (LLAMA/SecFloat; no GPU backend); **Orca does NOT ingest ONNX** — it benchmarks
+  hardcoded C++ `cnn.h` models on zeroed input. `run_ezpc_vm.sh` rewritten to the
+  verified LLAMA CPU flow.
+- **NssMPClib (XidianNSS) = the recommended GPU-FSS path**: PyTorch-native, genuinely
+  FSS (DPF/DCF/DICF), 2PC public-weights/secret-input, GPU conv/matmul, light install.
+  `mpc/nssmpc_infer.py` rebuilds CNN+CNN in NssMPClib-native ops (**embedding = 1×1
+  Conv2d**, Conv1d→Conv2d(H=1), mean→AvgPool2d/max→MaxPool2d) + weight mapper from
+  `CNNDTA` (verified `NssDTA==CNNDTA` exact, both pools) + `--party 0/1` 2PC + timing;
+  `mpc/run_nssmpc_vm.sh` installs & runs it on a CUDA VM.

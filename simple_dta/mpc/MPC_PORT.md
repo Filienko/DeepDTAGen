@@ -1,21 +1,33 @@
-# GPU-FSS port of the affinity predictor (Orca / EzPC)
+# FSS port of the affinity predictor — how to run it securely
 
-How to run the affinity CNN as a **GPU-optimized, FSS-based, 2-party** secure
-inference. Two tracks:
+Run the CNN+CNN affinity model as a **FSS-based, 2-party** secure inference. Three
+tracks, in order of "runs today" → "GPU-optimized":
 
 - **G1 — self-contained PoC (runs today, any box):** `fss_infer.py` executes the
   model under a real FSS protocol (fixed-point ring + `sycret` DCF DReLU +
-  Beaver-triple select). Use it to validate correctness and fixed-point precision.
-- **G2 — production GPU-FSS (this file):** export to ONNX → EzPC/GPU-MPC (**Orca**)
-  → a CUDA 2-party app. This is where the *MPC implementation itself* is
-  GPU-optimized: Orca implements the FSS DReLU/DCF and truncation as CUDA kernels
-  over a 64-bit ring, so the nonlinear key-evaluation is GPU-parallel — which a
-  pure-PyTorch engine (G1, `sycret` on CPU, 32-bit) can't be.
+  Beaver-triple select). Validates correctness, fixed-point precision, and prints
+  per-op + single-sample timing (`--profile`). Small models only (sycret 32-bit).
+- **GPU-FSS with a real secret input → NssMPClib** (`nssmpc_infer.py` +
+  `run_nssmpc_vm.sh`). PyTorch-native, genuinely FSS (DPF/DCF/DICF), 2PC
+  public-weights/secret-input; GPU-accelerates conv/matmul. **This is the
+  recommended GPU path for our CNN** — real input, full-size model, light install.
+- **CPU-FSS reference of the exported ONNX → EzPC / LLAMA** (`run_ezpc_vm.sh`).
+  Real 2PC, 64-bit ring, real secret input, but CPU (see the Orca note below).
+
+**Two verified facts (EzPC master, 2026-07-16) that correct an earlier assumption:**
+- EzPC **OnnxBridge has NO GPU backend** — it compiles ONNX only to **CPU** FSS
+  (LLAMA) / SecFloat. There is no `--backend ORCA`.
+- **Orca (GPU-MPC) does NOT ingest ONNX.** It runs *hardcoded C++ architectures*
+  (`cnn.h`: VGG/ResNet/AlexNet…) on **zeroed input** as a GPU-FSS *benchmark*. To
+  GPU-FSS *our* CNN with a real input you either (a) use **NssMPClib**, or (b)
+  hand-port the model into sytorch C++ `cnn.h` and use Orca purely for timing.
 
 Why FSS and not CrypTen/secret-sharing: under GMW-style secret sharing each ReLU
 costs several online rounds and (per CryptGPU) is *not* faster on GPU; FSS makes
 ReLU a **single online round** with GPU-parallel per-element key eval. See
-`../FSS_FRAMEWORKS.md`.
+`../FSS_FRAMEWORKS.md`. Note: the model supports **both mean- and max-pool** — mean
+is free under FSS, max is a log(L) DReLU tournament (works, costlier; use whichever
+your trained checkpoint has — no retrain needed).
 
 ---
 
@@ -67,32 +79,39 @@ MPC runs over an integer ring, not floats.
 
 ---
 
-## 2. Build & run Orca (on your CUDA box)
+## 2. Running it securely — pick a path
 
-Orca lives in `mpc-msri/EzPC` under `GPU-MPC`; `OnnxBridge` compiles the ONNX into
-a 2-party C++/CUDA app. Follow the upstream READMEs (versions move); the shape is:
-
+### (a) GPU-FSS, real input, our model → **NssMPClib** (recommended)
+`bash mpc/run_nssmpc_vm.sh` on a CUDA VM. It installs NssMPClib, sets the ring
+(`BIT_LEN=64 SCALE_BIT=16 DEVICE=cuda DEBUG_LEVEL=0`), generates offline FSS keys,
+and runs two parties (server=weights, client=secret input). `mpc/nssmpc_infer.py`
+rebuilds CNN+CNN in NssMPClib-native ops (embedding = 1×1 Conv2d; Conv1d→Conv2d
+H=1; mean→AvgPool2d / max→MaxPool2d), loads your `CNNDTA` checkpoint, and records
+single-sample latency + per-op runtimes. Validate the mapping first (no GPU):
 ```sh
-# 1. clone + build EzPC / GPU-MPC (needs CUDA toolkit, CUTLASS, CMake, Eigen, OpenMP)
-git clone https://github.com/mpc-msri/EzPC && cd EzPC/GPU-MPC
-# follow GPU-MPC/README.md to build sytorch + the FSS backends (LLAMA + GPU)
-
-# 2. compile our ONNX to a 2PC app via OnnxBridge
-#    (CPU-FSS = LLAMA backend for a correctness check; GPU backend = Orca)
-cd ../OnnxBridge
-python main.py --path /path/to/affinity_fss.onnx --backend LLAMA --scale 13 --bitlength 64
-# -> generates server (party 0) + client (party 1) binaries
-
-# 3. offline: generate FSS keys (dealer);  online: run the two parties
-#    party 0 holds the (public) model, party 1 secret-shares the drug+protein one-hot
-./server-offline && ./client-offline          # key generation
-./server LABEL 0 <ip> & ./client LABEL 1 <ip>  # 2PC inference
+python -m mpc.nssmpc_infer --summary runs/<tag>_summary.json --ckpt <.pth>   # NssDTA==CNNDTA + timing
 ```
 
-For the **GPU (Orca) backend**, build the `GPU-MPC` experiments per its README and
-select the CUDA backend instead of `LLAMA`; the same ONNX and `--scale/--bitlength`
-apply. Benchmark on the CUDA box: latency for batch=1 (round-bound) and throughput
-at large batch (GPU-bound). Docs: `GPU-MPC/README.md`, `GPU-MPC/experiments/`.
+### (b) CPU-FSS reference of the exported ONNX → **EzPC / LLAMA**
+`bash mpc/run_ezpc_vm.sh` — exports our ONNX and drives EzPC OnnxBridge with the
+**LLAMA** (FSS, CPU) backend, verified flow:
+```sh
+cd EzPC/OnnxBridge
+python main.py --path affinity_fss.onnx --generate executable --backend LLAMA --scale 15 --bitlength 40
+# role 1 = dealer/offline keygen, 2 = server/weights, 3 = client/secret input (localhost 127.0.0.1)
+./model_LLAMA_15 1 ; ./model_LLAMA_15 2 model_input_weights.dat & ./model_LLAMA_15 3 127.0.0.1 < input.inp > output.txt
+```
+`/usr/bin/time -v` the offline vs online phases (single-sample = batch 1); LLAMA
+prints its own online time + comm bytes. Caveat: our ONNX has **two inputs**
+(drug/prot one-hot) — OnnxBridge demos are single-input, so you may need a
+single-input wrapper. This path is CPU (no GPU backend exists in OnnxBridge).
+
+### (c) True GPU-resident FSS numbers → **Orca** (benchmark only)
+Orca (`EzPC/GPU-MPC`) gives real GPU-FSS timings but **only for models written in
+its C++ `cnn.h`, on zeroed input** — not an ONNX/real-input path. Build:
+`export CUDA_VERSION=11.7 GPU_ARCH=<sm> ; sh setup.sh main ; make orca`, add
+CNN+CNN to `experiments/orca/cnn.h` (`getCNN`), then `run_experiment.py` prints
+per-op GPU-FSS timing tables. Use it only if you need headline GPU-FSS throughput.
 
 ---
 
@@ -117,10 +136,12 @@ Ranked by impact (see `../FSS_FRAMEWORKS.md` for evidence):
 ---
 
 ## 4. Files
-- `model_mpc.py` — `MPCModel` (backend-agnostic) + `MPCReadyNet` (ONNX-exportable) + `load_cnndta` (checkpoint loader).
-- `fss_infer.py` — self-contained FSS engine + `--sweep` precision tool.
-- `accuracy.py` — load a trained mean-pool checkpoint → real cleartext metrics + FSS-vs-cleartext fidelity.
+- `model_mpc.py` — `MPCModel` (backend-agnostic, mean+max pool) + `MPCReadyNet` (ONNX-exportable) + `load_cnndta` (checkpoint loader, mean or max).
+- `fss_infer.py` — self-contained FSS engine + `--sweep` precision + `--profile` timing (secure ReLU, secure max-pool tournament).
+- `nssmpc_infer.py` — **NssMPClib GPU-FSS driver**: `NssDTA` (Conv2d-native CNN+CNN) + weight mapper from `CNNDTA` + `--party 0/1` 2PC + per-op/single-sample timing.
+- `run_nssmpc_vm.sh` — install NssMPClib + run the 2PC inference on a CUDA VM (recommended GPU path).
+- `accuracy.py` — load a trained checkpoint → real cleartext metrics + FSS-vs-cleartext fidelity (`--profile`).
 - `export_onnx.py` — ONNX export (`--summary/--ckpt`) + onnxruntime equivalence check.
-- `run_ezpc_vm.sh` — build+run the EzPC LLAMA/Orca 2PC app on a larger (GPU) VM.
-- `test_fss.py` — correctness checks (G0 equality, secure ReLU, end-to-end FSS).
+- `run_ezpc_vm.sh` — EzPC **LLAMA (CPU-FSS)** 2PC of the exported ONNX (verified flow).
+- `test_fss.py` — correctness checks (G0 mean+max equality, secure ReLU, secure max-pool, end-to-end FSS).
 - `setup_env.sh` / `requirements.txt` / `INSTALL.md` — environment + install steps.

@@ -54,41 +54,53 @@ python -m mpc.accuracy --summary runs/cnn_davis_mp_summary.json \
 ```
 Prints the model's real cleartext test metrics (MSE/CI/rm2/balAcc) and the FSS
 engine's fidelity (FSS predictions vs cleartext, MAE/Pearson) on real test pairs.
-The checkpoint **must be mean-pool** (max-pool costs comparison rounds; MPC rejects
-it). The full-size model's *full-length* FSS run is the 64-bit Orca path (§5) — the
-Python engine's `sycret` core is 32-bit and handles small models only.
+The checkpoint can be **mean OR max pool** (`train.py --pool mean|max`; max works,
+just costlier under FSS — no retrain needed). Add `--profile` for per-op +
+single-sample timing. The full-size model's full-length FSS run is the GPU path
+(§4); the Python engine's `sycret` core is 32-bit and handles small models only.
 
-## 4. EzPC CPU-FSS (LLAMA) build — 64-bit FSS, no GPU
-
-```sh
-sudo apt-get install -y build-essential cmake libeigen3-dev libssl-dev git python3-dev
-git clone https://github.com/mpc-msri/EzPC && cd EzPC
-git submodule update --init --recursive
-pip install -r OnnxBridge/requirements.txt
-( cd GPU-MPC/ext/sytorch && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j )
-# compile our ONNX to a 2PC app:
-python OnnxBridge/main.py --path /path/to/affinity_fss.onnx \
-       --backend LLAMA --scale 13 --bitlength 64 --generate code
-```
-Then run the emitted app's offline (key-gen) + online (party 0 = model, party 1 =
-secret input) phases on localhost and diff against cleartext. `mpc/run_ezpc_vm.sh`
-scripts this end to end.
-
-## 5. Orca GPU-FSS build — the GPU-optimized path
-
-Additional requirements: an NVIDIA **Volta+ GPU (sm_70+)**, **CUDA toolkit ≥ 11.7**,
-CUTLASS (fetched by the GPU-MPC build), a recent driver. Build under
-`EzPC/GPU-MPC` per its `README.md`, then use `--backend` for the CUDA FSS backend
-in OnnxBridge. Drive the whole thing with:
+## 4. GPU-FSS with a real input — **NssMPClib** (recommended GPU path)
 
 ```sh
-BACKEND=ORCA SCALE=13 BITLENGTH=64 \
-  SUMMARY=runs/cnn_davis_mp_summary.json CKPT=runs/cnn_davis_mp_best.pth \
-  bash simple_dta/mpc/run_ezpc_vm.sh
+# on a CUDA VM (NVIDIA GPU, CUDA>=11, Python 3.10+, torch>=2.5):
+SUMMARY=runs/<tag>_summary.json CKPT=runs/<tag>_best.pth DATASET=davis \
+  bash simple_dta/mpc/run_nssmpc_vm.sh
 ```
-Benchmark: single-query latency is round-bound (model depth); throughput scales with
-batch size (GPU absorbs the parallel work). See `MPC_PORT.md` §3.
+Installs NssMPClib (`pip install -e .`, CUTLASS/csprng submodules), sets the ring
+(`BIT_LEN=64 SCALE_BIT=16 DEVICE=cuda DEBUG_LEVEL=0`), generates offline FSS keys,
+and runs both parties (server=weights, client=secret input). Records single-sample
+latency + per-op runtimes. Validate the model mapping first (no GPU needed):
+```sh
+python -m mpc.nssmpc_infer --summary runs/<tag>_summary.json --ckpt <.pth>   # NssDTA==CNNDTA + timing
+```
+NssMPClib is genuinely FSS (DPF/DCF/DICF) and GPU-accelerates conv/matmul; the FSS
+nonlinear eval is CPU-side (negligible for our ~800K model).
 
-> EzPC's exact binary/flag names move between versions — treat §4–5 and
-> `run_ezpc_vm.sh` as the tested *structure* and reconcile against the READMEs you
+## 5. CPU-FSS reference of the exported ONNX — **EzPC / LLAMA**
+
+```sh
+sudo apt-get install -y build-essential cmake libeigen3-dev git zip python3-dev
+# EzPC pins numpy==1.21/onnx==1.12 -> use Python 3.8-3.10
+bash simple_dta/mpc/run_ezpc_vm.sh          # exports ONNX + drives OnnxBridge/LLAMA
+# core command it runs:
+#   python OnnxBridge/main.py --path affinity_fss.onnx --generate executable \
+#          --backend LLAMA --scale 15 --bitlength 40
+# then roles: 1=dealer/keygen, 2=server/weights, 3=client/secret input (localhost)
+```
+`/usr/bin/time -v` the offline vs online phases for the single-sample latency; LLAMA
+prints its own online time + comm bytes. **CPU only** — OnnxBridge has no GPU
+backend. Caveat: our ONNX has two inputs (drug/prot one-hot); OnnxBridge demos are
+single-input, so a single-input wrapper may be needed.
+
+## 6. Orca GPU-FSS — benchmark only (no ONNX / real input)
+
+Orca (`EzPC/GPU-MPC`) gives true GPU-resident FSS timings but **does not ingest
+ONNX** — it runs hardcoded C++ models (`cnn.h`) on **zeroed input** as a benchmark.
+To time *our* CNN on it you must hand-write CNN+CNN into `experiments/orca/cnn.h`
+and rebuild (`export CUDA_VERSION=11.7 GPU_ARCH=<sm>; sh setup.sh main; make orca`),
+then `run_experiment.py` prints per-op GPU-FSS tables. Use only if you need headline
+GPU-FSS throughput; for real secure inference of our model, use §4 (NssMPClib).
+
+> Upstream binary/flag names move between versions — treat §4–6 and the scripts as
+> tested *structure* and reconcile against the READMEs you
 > clone. Links are in `run_ezpc_vm.sh` and `MPC_PORT.md`.
