@@ -1,11 +1,17 @@
 """GPU-FSS 2-party inference of the CNN+CNN affinity model with **NssMPClib**.
 
 NssMPClib (XidianNSS) is a PyTorch-native MPC library that is genuinely FSS
-(DPF/DCF/DICF keys for the nonlinear ops), supports 2PC semi-honest with
-public-weights/secret-input, and GPU-accelerates conv/matmul (CUTLASS). It's a
-much lighter install than EzPC/Orca (`pip install -e .`) and takes a real secret
-input -- the pragmatic GPU-FSS path for our ~800K CNN. (Its FSS *nonlinear* eval
-is CPU-side; negligible for a model this small.)
+(DPF/DCF/DICF keys for the nonlinear ops), supports 2PC semi-honest, and
+GPU-accelerates conv/matmul (CUTLASS). It's a much lighter install than EzPC/Orca
+(`pip install -e .`) and takes a real secret input -- the pragmatic GPU-FSS path
+for our ~800K CNN. (Its FSS *nonlinear* eval is CPU-side; negligible for a model
+this small.)
+
+**Private weights:** `nn.utils.share_model_param(model=...)` secret-shares the
+model parameters between the two parties, so this path already runs under the
+**private model + private input** threat model (linear layers become secret x
+secret Beaver matmul -- neither party learns the other's secret). This matches the
+self-contained engine's `private_weights=True` default (fss_infer.py).
 
 Key idea that makes the whole net NssMPClib-native: **the embedding is a 1x1
 Conv2d over one-hot channels**. So CNN+CNN maps entirely onto Conv2d / ReLU /
@@ -43,13 +49,13 @@ class NssDTA(nn.Module):
 
     def __init__(self, drug_vocab, prot_vocab, embed_dim,
                  drug_channels, prot_channels, drug_kernel, prot_kernel,
-                 head_dims, pool="mean"):
+                 head_dims, pool="mean", drug_dilations=None, prot_dilations=None):
         super().__init__()
         self.pool = pool
         self.drug_embed = nn.Conv2d(drug_vocab, embed_dim, kernel_size=1)   # one-hot @ table
         self.prot_embed = nn.Conv2d(prot_vocab, embed_dim, kernel_size=1)
-        self.drug_convs = self._convs(embed_dim, drug_channels, drug_kernel)
-        self.prot_convs = self._convs(embed_dim, prot_channels, prot_kernel)
+        self.drug_convs = self._convs(embed_dim, drug_channels, drug_kernel, drug_dilations)
+        self.prot_convs = self._convs(embed_dim, prot_channels, prot_kernel, prot_dilations)
         head_in = drug_channels[-1] + prot_channels[-1]
         layers, prev = [], head_in
         for i, h in enumerate(head_dims):
@@ -59,10 +65,11 @@ class NssDTA(nn.Module):
         self.head = nn.Sequential(*layers)
 
     @staticmethod
-    def _convs(in_c, channels, k):
+    def _convs(in_c, channels, k, dilations=None):
+        dilations = dilations or [1] * len(channels)
         mods, prev = [], in_c
-        for c in channels:
-            mods += [nn.Conv2d(prev, c, kernel_size=(1, k)), nn.ReLU()]
+        for c, d in zip(channels, dilations):
+            mods += [nn.Conv2d(prev, c, kernel_size=(1, k), dilation=(1, d)), nn.ReLU()]
             prev = c
         return nn.Sequential(*mods)
 
@@ -75,17 +82,20 @@ class NssDTA(nn.Module):
         return self.head(torch.cat([d, p], dim=1))
 
 
-def nss_from_cnndta(summary=None, ckpt=None):
+def nss_from_cnndta(summary=None, ckpt=None, config=None):
     """Build an NssDTA and copy a trained CNNDTA's weights into it.
     Conv1d[o,i,k]->Conv2d[o,i,1,k]; embedding table[V,E]->Conv2d(V->E,1x1)."""
-    cnn = load_cnndta(summary, ckpt)
+    cnn = load_cnndta(summary, ckpt, config)
     drug_ch = [c.out_channels for c in cnn.drug.convs]
     prot_ch = [c.out_channels for c in cnn.protein.convs]
     head_dims = [m.out_features for m in cnn.head.net
                  if isinstance(m, nn.Linear)][:-1]
+    drug_dil = [c.dilation[0] for c in cnn.drug.convs]
+    prot_dil = [c.dilation[0] for c in cnn.protein.convs]
     net = NssDTA(CHARISOSMILEN + 1, CHARPROTLEN + 1, cnn.drug.embed.embedding_dim,
                  drug_ch, prot_ch, cnn.drug.convs[0].kernel_size[0],
-                 cnn.protein.convs[0].kernel_size[0], head_dims, pool=cnn.drug.pool)
+                 cnn.protein.convs[0].kernel_size[0], head_dims, pool=cnn.drug.pool,
+                 drug_dilations=drug_dil, prot_dilations=prot_dil)
     with torch.no_grad():
         # embedding table [V, E] -> 1x1 conv weight [E, V, 1, 1]
         net.drug_embed.weight.copy_(cnn.drug.embed.weight.t().reshape(
@@ -210,6 +220,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--summary", default=None); ap.add_argument("--ckpt", default=None)
+    ap.add_argument("--config", default=None, help="named preset (e.g. regB) instead of --summary")
     ap.add_argument("--dataset", default="davis", choices=["davis", "kiba", "bindingdb"])
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--batch", type=int, default=8)
@@ -218,7 +229,7 @@ def main():
                          "Omit for the plaintext torch check + timing.")
     args = ap.parse_args()
     device = torch.device(args.device if (args.device == "cpu" or torch.cuda.is_available()) else "cpu")
-    net, cnn = nss_from_cnndta(args.summary, args.ckpt)
+    net, cnn = nss_from_cnndta(args.summary, args.ckpt, args.config)
     if args.party is None:
         ok = run_plaintext(net, cnn, args.dataset, args.batch, device)
         raise SystemExit(0 if ok else 1)

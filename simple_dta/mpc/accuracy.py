@@ -84,8 +84,9 @@ def fss_fidelity(dataset, n, seq_len, frac_bits, device, pool="mean", profile=Fa
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--summary", default=None, help="runs/<tag>_summary.json (mean-pool CNN)")
-    ap.add_argument("--ckpt", default=None, help="trained mean-pool CNNDTA .pth")
+    ap.add_argument("--summary", default=None, help="runs/<tag>_summary.json (CNN+CNN)")
+    ap.add_argument("--ckpt", default=None, help="trained CNNDTA .pth")
+    ap.add_argument("--config", default=None, help="named preset (e.g. regB) instead of --summary")
     ap.add_argument("--dataset", default="davis", choices=["davis", "kiba", "bindingdb"])
     ap.add_argument("--batch-size", type=int, default=256)
     ap.add_argument("--max-eval", type=int, default=None, help="cap cleartext eval rows (speed)")
@@ -101,8 +102,8 @@ def main():
 
     device = torch.device(args.device if (args.device == "cpu" or torch.cuda.is_available())
                           else "cpu")
-    model = load_cnndta(args.summary, args.ckpt)
-    tag = args.ckpt or args.summary or "random-init (no checkpoint)"
+    model = load_cnndta(args.summary, args.ckpt, args.config)
+    tag = args.ckpt or args.summary or args.config or "random-init (no checkpoint)"
     print(f"=== affinity accuracy | model: {tag} | dataset {args.dataset} ===")
     if args.ckpt is None:
         print("  [!] no --ckpt: metrics below are from RANDOM weights (pipeline check only)")

@@ -17,12 +17,14 @@ secure (see the leaderboard at the bottom).
 
 ## 1. Why FSS fits this problem
 
-We want two parties (e.g. a model-holder and a data-holder, or two
-non-colluding servers) to jointly compute an affinity prediction without either
-learning the other's input. Under **secret-sharing MPC**, linear algebra
-(conv, matmul, linear) is essentially free — each party computes locally on its
-share — and the *entire* online cost is the **non-linearities**, which need
-interaction.
+We want two parties (a model-holder and a data-holder, or two non-colluding
+servers) to jointly compute an affinity prediction where **both the model weights
+and the input are private** (secret-shared) — neither learns the other's secret.
+Under secret-sharing MPC, with **private weights** the linear layers (conv/matmul)
+are secret×secret and need a **Beaver-triple** multiply (one online round each, but
+cheap — a big parallel matmul), and the **non-linearities** are the dominant online
+cost. (If instead the weights are *public* to both parties, linear layers are purely
+local and only the non-linearities interact — a lighter variant.)
 
 **Function Secret Sharing (FSS)** makes the cheapest non-linearities cheap in the
 best possible way: a ReLU becomes a single **DReLU** (secure "is x > 0?")

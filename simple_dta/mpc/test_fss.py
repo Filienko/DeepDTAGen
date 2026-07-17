@@ -97,6 +97,26 @@ def test_g1_maxpool_end_to_end():
           "DReLUs vs mean-pool)")
 
 
+def test_private_weights():
+    """Private (secret-shared) weights via Beaver matmul/conv == cleartext, and
+    cost more online rounds than public weights."""
+    dev = torch.device("cpu")
+    m = F.build_demo_model("small")
+    mpc = MPCModel(m)
+    xd, xt = F.make_inputs("davis", batch=4, seq_scale=0.1)
+    with torch.no_grad():
+        clear = mpc.forward_tokens_clear(xd, xt).to(torch.float64)
+    priv, be_p, _ = F._run(mpc, xd, xt, f=6, device=dev, private_weights=True)
+    pub, be_q, _ = F._run(mpc, xd, xt, f=6, device=dev, private_weights=False)
+    assert (priv - clear).abs().mean() < 5e-2, "private-weight FSS too lossy"
+    assert (pub - clear).abs().mean() < 5e-2, "public-weight FSS too lossy"
+    assert be_p.online_rounds > be_q.online_rounds, "private weights should add rounds"
+    assert be_p.linear_rounds == 9, be_p.linear_rounds   # 2 embed + 4 conv + 3 linear
+    print(f"OK: PRIVATE-weight FSS == cleartext (mae {(priv-clear).abs().mean():.2e}); "
+          f"{be_p.online_rounds} rounds vs {be_q.online_rounds} public "
+          f"(+{be_p.linear_rounds} Beaver linear layers)")
+
+
 if __name__ == "__main__":
     np.random.seed(0)
     torch.manual_seed(0)
@@ -106,4 +126,5 @@ if __name__ == "__main__":
     test_secure_max_pool()
     test_g1_end_to_end()
     test_g1_maxpool_end_to_end()
+    test_private_weights()
     print("\nALL MPC/FSS CHECKS PASSED")

@@ -1141,3 +1141,21 @@ user's CUDA box.
   Conv2d**, Conv1d→Conv2d(H=1), mean→AvgPool2d/max→MaxPool2d) + weight mapper from
   `CNNDTA` (verified `NssDTA==CNNDTA` exact, both pools) + `--party 0/1` 2PC + timing;
   `mpc/run_nssmpc_vm.sh` installs & runs it on a CUDA VM.
+
+**Follow-up (private weights + regB online-time analysis):**
+- **Private-weight FSS** (threat model = private model + private input): the CNN's
+  linear layers (embed/conv/head) become secret×secret **Beaver-triple** matmul/conv
+  (`fss_infer.py` `private_weights=True`, default; `--public-weights` for the light
+  variant). Uses a 16-bit **limb split** so full-range 32-bit shares don't overflow
+  the int64 accumulation. Verified encrypted==cleartext; adds +1 online round per
+  linear layer (small model: 21 rounds private vs 12 public). NssMPClib
+  (`share_model_param`) and EzPC/LLAMA already run private weights.
+- **regB** (`cnn_davis_regB_d1_wd0`, the 0.848 dilated CNN+CNN) is now a named preset
+  (`mpc/configs.py`, `--config regB`); building it fixed a real NssDTA bug (dilations
+  weren't carried → NssDTA now matches CNNDTA exactly, 1e-8, for the dilated arch).
+- **`mpc/ONLINE_TIME.md`** — answers "does Orca/SIGMA cut regB's 2.6s MP-SPDZ online?":
+  regB = **347K secure comparisons (233K ReLU + 114K max-pool), 0 softmax/LN**, so
+  **SIGMA is the wrong tool** (transformer-only) and **Orca is the right one** (GPU
+  DReLU/DCF kernels → likely 1–2 orders faster online); NssMPClib won't help this
+  metric (CPU nonlinears). `mpc/orca/regB_cnn.h` + `mpc/run_orca_regB.sh` are the
+  Orca benchmark to measure it on the GPU box.

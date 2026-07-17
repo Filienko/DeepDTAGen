@@ -36,10 +36,11 @@ class Backend:
     """Tensor operations the model needs, so the forward is backend-agnostic.
 
     A 'tensor' is whatever the backend uses (a plaintext torch.Tensor for
-    ClearBackend, an additively-shared pair for FSSBackend). Public weights are
-    always plaintext torch.Tensors -- this is the public-weights / secret-input
-    threat model (server holds the model, client holds the private molecule +
-    protein), which keeps every linear op local and confines interaction to ReLU.
+    ClearBackend, an additively-shared pair for FSSBackend). Model weights are
+    passed to the ops as plaintext torch.Tensors; the FSS backend decides whether
+    to treat them as PRIVATE (secret-share them -> Beaver matmul/conv; threat model
+    = private model + private data, neither party learns the other's secret) or
+    public (local products). Default is private weights (see fss_infer.py).
     """
 
     def embed(self, x_onehot, table):
@@ -149,7 +150,7 @@ class MPCModel:
         return self.forward(be, d, p).squeeze(-1)
 
 
-def load_cnndta(summary_path=None, ckpt_path=None):
+def load_cnndta(summary_path=None, ckpt_path=None, config=None):
     """Rebuild the exact CNNDTA a run was trained with (from its
     `runs/*_summary.json`) and load its weights. Reuses train.make_parser +
     train.build_model so the architecture always matches the checkpoint. With no
@@ -162,7 +163,10 @@ def load_cnndta(summary_path=None, ckpt_path=None):
     import json
     import train
     from models import CNNDTA
-    if summary_path is None:
+    if config is not None:
+        from mpc.configs import build_cnndta
+        model = build_cnndta(config)            # named preset (e.g. regB)
+    elif summary_path is None:
         model = CNNDTA(pool="mean", proj_dim=0, head_layers=2, head_dim=128)
     else:
         with open(summary_path) as f:

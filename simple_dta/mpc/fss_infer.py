@@ -6,14 +6,18 @@ Sharing protocol:
 
   * **Fixed-point** over the ring Z_{2^32} (`torch.int64` storage, natural
     wraparound), `f` fractional bits.
-  * **Additive 2-of-2 secret sharing** of the (one-hot-encoded) private input.
-    Model weights are **public** (server holds the model, client holds the
-    private molecule+protein) -> every Conv/Linear/mean-pool is LOCAL (no
-    interaction); only ReLU needs the network.
+  * **Additive 2-of-2 secret sharing** of BOTH the private input (one-hot) AND the
+    **private model weights** (threat model: private model + private data -- neither
+    party learns the other's secret). `private_weights=True` (default): every
+    Conv/Linear/embed is a secret x secret **Beaver-triple** multiplication (one
+    online round each to reveal the two masked operands). `private_weights=False`
+    is the lighter public-weights variant (local products, only ReLU interacts).
   * **ReLU via FSS**: DReLU is a real Distributed Comparison Function from the
     `sycret` library (AriaNN's Rust FSS core) -- one online round, evaluated
     element-wise (the GPU-parallel primitive). The `x * DReLU(x)` select is a
-    Beaver-triple multiplication.
+    Beaver-triple multiplication. Max-pool = a log(L) tournament of secure-max.
+  * Private-weight matmul/conv over the 32-bit ring uses a 16-bit **limb split**
+    so the int64 accumulation of full-range shares never overflows.
 
 Honesty / scope (semi-honest, PoC):
   * Both parties are simulated in one process with a trusted dealer (offline
@@ -94,14 +98,19 @@ def reconstruct(sh):
 
 
 class FSSBackend(Backend):
-    """Runs MPCModel under the FSS protocol. Weights public, activations shared."""
+    """Runs MPCModel under the FSS protocol. Both model weights AND activations are
+    secret-shared (private_weights=True): linear layers are Beaver-triple secure
+    matmul/conv. Set private_weights=False for the lighter public-weights variant."""
 
-    def __init__(self, dealer, f, device, profile=False):
+    def __init__(self, dealer, f, device, profile=False, private_weights=True):
         self.d = dealer
         self.f = f
         self.device = device
+        self.private = private_weights  # True: model weights are SECRET-shared (Beaver
+                                        # matmul/conv); False: public weights (local products)
         self.relu_calls = 0
         self.online_rounds = 0  # sequential comm rounds (DReLU reveal + Beaver reveals)
+        self.linear_rounds = 0  # extra online rounds from private-weight linear layers
         from collections import defaultdict
         self.op_time = defaultdict(float)
         self.op_calls = defaultdict(int)
@@ -145,32 +154,80 @@ class FSSBackend(Backend):
         return self._trunc_by(sh, self.f)
 
     def _add_public(self, sh, pub):
-        # add a public vector (bias) to a shared tensor -> add to one share only
+        # add a public vector to a shared tensor -> add to one share only
         return (sh[0] + pub) & MASK, sh[1]
 
+    def _add_shared(self, sh, pub_fp):
+        # add a PRIVATE (secret-shared) vector -> share it, add locally (no round)
+        b0, b1 = share(pub_fp)
+        return (sh[0] + b0) & MASK, (sh[1] + b1) & MASK
+
+    def _bias(self, sh, bias, view):
+        b = self._w(bias).view(view)
+        return self._add_shared(sh, b) if self.private else self._add_public(sh, b)
+
+    # -- private-weight (secret x secret) linear ops via Beaver triples ----------
+    @staticmethod
+    def _op_mod(a, b, op):
+        """op(a,b) mod 2^32 for full-range ring tensors, computed on 16-bit limbs so
+        the int64 accumulation never overflows (the a_hi*b_hi*2^32 term vanishes mod
+        2^32). `op` is any bilinear map (matmul / conv1d)."""
+        lo = 0xFFFF
+        a_lo, a_hi = a & lo, (a >> 16) & lo
+        b_lo, b_hi = b & lo, (b >> 16) & lo
+        low = op(a_lo, b_lo)
+        mid = op(a_hi, b_lo) + op(a_lo, b_hi)
+        return (low + (mid << 16)) & MASK
+
+    def _beaver(self, x_sh, w_fp, op):
+        """Secure bilinear op(x, w) with BOTH x (activation) and w (model weight)
+        secret-shared. Dealer supplies a matching Beaver triple; one online round
+        reveals the two masked operands. Returns shares at 2f frac bits (caller
+        truncates)."""
+        x0, x1 = x_sh
+        w = w_fp & MASK
+        w0, w1 = share(w)                                  # the private weight is shared
+        A0 = rand_ring(x0.shape, self.device); A1 = rand_ring(x0.shape, self.device)
+        B0 = rand_ring(w.shape, self.device); B1 = rand_ring(w.shape, self.device)
+        A, B = (A0 + A1) & MASK, (B0 + B1) & MASK
+        C = self._op_mod(A, B, op)
+        C0 = rand_ring(C.shape, self.device); C1 = (C - C0) & MASK
+        D = (reconstruct(x_sh) - A) & MASK                 # reveal x - A (masked)
+        E = ((w0 + w1) - B) & MASK                         # reveal w - B (masked)
+        self.online_rounds += 1; self.linear_rounds += 1
+        r0 = (C0 + self._op_mod(A0, E, op) + self._op_mod(D, B0, op)
+              + self._op_mod(D, E, op)) & MASK
+        r1 = (C1 + self._op_mod(A1, E, op) + self._op_mod(D, B1, op)) & MASK
+        return r0, r1
+
     def embed(self, x_onehot, table):
-        # x_onehot is a *shared* [B,L,V]; table public [V,E]. matmul then truncate.
+        # x_onehot: shared one-hot [B,L,V]; table: model weight [V,E]. -> [B,E,L]
         W = self._w(table)
-        out0 = torch.matmul(x_onehot[0], W) & MASK
-        out1 = torch.matmul(x_onehot[1], W) & MASK
-        out = self._trunc((out0, out1))
+        mm = lambda a, b: torch.matmul(a, b)
+        if self.private:
+            out = self._trunc(self._beaver(x_onehot, W, mm))
+        else:
+            out = self._trunc(((torch.matmul(x_onehot[0], W)) & MASK,
+                               (torch.matmul(x_onehot[1], W)) & MASK))
         return out[0].transpose(1, 2) & MASK, out[1].transpose(1, 2) & MASK
 
     def conv1d(self, x, weight, bias):
         W = self._w(weight)
-        # int64 conv: linear, so apply per share locally; bias added once, post-trunc
-        c0 = torch.nn.functional.conv1d(x[0], W) & MASK
-        c1 = torch.nn.functional.conv1d(x[1], W) & MASK
-        t0, t1 = self._trunc((c0, c1))
-        b = self._w(bias).view(1, -1, 1)
-        return self._add_public((t0, t1), b)
+        cv = lambda a, b: torch.nn.functional.conv1d(a, b)
+        if self.private:
+            t = self._trunc(self._beaver(x, W, cv))
+        else:
+            t = self._trunc(((cv(x[0], W)) & MASK, (cv(x[1], W)) & MASK))
+        return self._bias(t, bias, (1, -1, 1))
 
     def linear(self, x, weight, bias):
-        W = self._w(weight)
-        o0 = torch.matmul(x[0], W.t()) & MASK
-        o1 = torch.matmul(x[1], W.t()) & MASK
-        t0, t1 = self._trunc((o0, o1))
-        return self._add_public((t0, t1), self._w(bias).view(1, -1))
+        W = self._w(weight).t().contiguous()               # [in, out] for matmul(x, .)
+        mm = lambda a, b: torch.matmul(a, b)
+        if self.private:
+            t = self._trunc(self._beaver(x, W, mm))
+        else:
+            t = self._trunc(((torch.matmul(x[0], W)) & MASK, (torch.matmul(x[1], W)) & MASK))
+        return self._bias(t, bias, (1, -1))
 
     def mean_pool(self, x):
         # mean = (sum over L) * (1/L). Represent 1/L at an adaptive scale F2 chosen
@@ -242,9 +299,9 @@ class FSSBackend(Backend):
         return r0, r1
 
 
-def _run(mpc, smiles, target, f, device, profile=False):
+def _run(mpc, smiles, target, f, device, profile=False, private_weights=True):
     dealer = Dealer(device)
-    be = FSSBackend(dealer, f, device, profile=profile)
+    be = FSSBackend(dealer, f, device, profile=profile, private_weights=private_weights)
     xd = encode(to_onehot(smiles, mpc.drug_vocab).to(torch.float64), f).to(device)
     xt = encode(to_onehot(target, mpc.prot_vocab).to(torch.float64), f).to(device)
     if device.type == "cuda":
@@ -270,8 +327,10 @@ def print_profile(be, n_samples, total_secs):
         print(f"    {name:<11}{c:>7}{tot:>11.2f}{tot / c:>10.2f}{tot / n_samples:>11.2f}")
     print(f"    {'end-to-end':<11}{'':>7}{total_secs*1e3:>11.2f}{'':>10}"
           f"{total_secs*1e3/n_samples:>11.2f}   <- single-sample latency")
-    print(f"    (max_pool time includes its internal DReLUs; {be.relu_calls} DReLU calls, "
-          f"{be.online_rounds} online rounds total)")
+    wmode = "private (Beaver matmul/conv)" if be.private else "public (local products)"
+    print(f"    weights: {wmode}; {be.relu_calls} DReLU calls, {be.online_rounds} online "
+          f"rounds ({be.linear_rounds} from private-weight linear layers)")
+    print("    (max_pool time includes its internal DReLUs)")
 
 
 def build_demo_model(scale, pool="mean"):
@@ -320,6 +379,9 @@ def main():
     ap.add_argument("--sweep", action="store_true", help="frac-bit precision sweep")
     ap.add_argument("--profile", action="store_true",
                     help="per-op runtime breakdown + single-sample latency")
+    ap.add_argument("--public-weights", action="store_true",
+                    help="weights public (local products); default is PRIVATE weights "
+                         "(secret-shared, Beaver matmul/conv)")
     args = ap.parse_args()
 
     device = torch.device(args.device if (args.device == "cpu" or torch.cuda.is_available())
@@ -342,10 +404,12 @@ def main():
             print(f"{f:>9} {err.max().item():>12.2e} {err.mean().item():>13.2e} {rel:>9.2%}")
         return
 
-    pred, be, dt = _run(mpc, xd, xt, args.frac_bits, device, profile=args.profile)
+    pred, be, dt = _run(mpc, xd, xt, args.frac_bits, device, profile=args.profile,
+                        private_weights=not args.public_weights)
     err = (pred - clear).abs()
-    print(f"=== FSS 2PC inference | scale={args.scale} pool={mpc.pool_mode} | dev={device} "
-          f"| f={args.frac_bits} ===")
+    wm = "public" if args.public_weights else "PRIVATE"
+    print(f"=== FSS 2PC inference | scale={args.scale} pool={mpc.pool_mode} weights={wm} "
+          f"| dev={device} | f={args.frac_bits} ===")
     print(f"  inputs: {args.batch} pairs | drug L={xd.shape[1]} prot L={xt.shape[1]}")
     print(f"  cleartext pred : {[round(v,4) for v in clear.tolist()]}")
     print(f"  FSS pred       : {[round(v,4) for v in pred.tolist()]}")

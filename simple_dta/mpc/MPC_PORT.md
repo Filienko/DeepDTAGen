@@ -8,9 +8,17 @@ tracks, in order of "runs today" → "GPU-optimized":
   Beaver-triple select). Validates correctness, fixed-point precision, and prints
   per-op + single-sample timing (`--profile`). Small models only (sycret 32-bit).
 - **GPU-FSS with a real secret input → NssMPClib** (`nssmpc_infer.py` +
-  `run_nssmpc_vm.sh`). PyTorch-native, genuinely FSS (DPF/DCF/DICF), 2PC
-  public-weights/secret-input; GPU-accelerates conv/matmul. **This is the
-  recommended GPU path for our CNN** — real input, full-size model, light install.
+  `run_nssmpc_vm.sh`). PyTorch-native, genuinely FSS (DPF/DCF/DICF), 2PC;
+  GPU-accelerates conv/matmul. **This is the recommended GPU path for our CNN** —
+  real input, full-size model, light install.
+
+**Threat model: private model + private input.** Both the weights AND the drug/
+protein are secret-shared — neither party learns the other's secret. Linear layers
+are then secret×secret (Beaver matmul/conv), nonlinears are secure comparisons.
+All the paths here run this: our engine defaults to `private_weights=True`;
+NssMPClib's `share_model_param` secret-shares the model; EzPC/LLAMA holds the
+weights secret in the 2PC. (A lighter *public-weights* variant, where linear layers
+become local and only ReLU interacts, is available via `fss_infer --public-weights`.)
 - **CPU-FSS reference of the exported ONNX → EzPC / LLAMA** (`run_ezpc_vm.sh`).
   Real 2PC, 64-bit ring, real secret input, but CPU (see the Orca note below).
 
@@ -136,8 +144,10 @@ Ranked by impact (see `../FSS_FRAMEWORKS.md` for evidence):
 ---
 
 ## 4. Files
-- `model_mpc.py` — `MPCModel` (backend-agnostic, mean+max pool) + `MPCReadyNet` (ONNX-exportable) + `load_cnndta` (checkpoint loader, mean or max).
-- `fss_infer.py` — self-contained FSS engine + `--sweep` precision + `--profile` timing (secure ReLU, secure max-pool tournament).
+- `model_mpc.py` — `MPCModel` (backend-agnostic, mean+max pool) + `MPCReadyNet` (ONNX-exportable) + `load_cnndta` (checkpoint loader; `--summary/--ckpt/--config`).
+- `configs.py` — named presets (`regB` = the 0.848 dilated model, `cfgA`); `--config regB` across the tools.
+- `fss_infer.py` — self-contained FSS engine: **private-weight Beaver matmul/conv** (default; `--public-weights` for the light variant) + secure ReLU + secure max-pool + `--sweep` + `--profile` timing.
+- `ONLINE_TIME.md` + `orca/regB_cnn.h` + `run_orca_regB.sh` — regB's 347K/114K comparison breakdown, why Orca (not SIGMA) cuts the 2.6s MP-SPDZ online time, and the Orca benchmark to measure it.
 - `nssmpc_infer.py` — **NssMPClib GPU-FSS driver**: `NssDTA` (Conv2d-native CNN+CNN) + weight mapper from `CNNDTA` + `--party 0/1` 2PC + per-op/single-sample timing.
 - `run_nssmpc_vm.sh` — install NssMPClib + run the 2PC inference on a CUDA VM (recommended GPU path).
 - `accuracy.py` — load a trained checkpoint → real cleartext metrics + FSS-vs-cleartext fidelity (`--profile`).
