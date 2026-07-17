@@ -36,8 +36,25 @@ import time
 import torch
 import torch.nn as nn
 
-from data import CHARISOSMILEN, CHARPROTLEN, DEFAULTS
+from data import (CHARISOSMILEN, CHARPROTLEN, DEFAULTS, load_csv, label_encode,
+                  CHARISOSMISET, CHARPROTSET)
 from mpc.model_mpc import load_cnndta
+
+
+def _input_tokens(dataset, batch, davis_index=None):
+    """(xd, xt) token tensors [B, L]. If davis_index is set, load that real test
+    row(s) from the dataset; else random tokens (shape-only, for timing)."""
+    d = DEFAULTS[dataset]
+    if davis_index is None:
+        torch.manual_seed(1)
+        xd = torch.randint(0, CHARISOSMILEN + 1, (batch, d["max_smi_len"]))
+        xt = torch.randint(0, CHARPROTLEN + 1, (batch, d["max_seq_len"]))
+        return xd, xt
+    smiles, prots, _ = load_csv(dataset, "test")
+    idx = [(davis_index + i) % len(smiles) for i in range(batch)]
+    xd = torch.stack([torch.from_numpy(label_encode(smiles[i], d["max_smi_len"], CHARISOSMISET)) for i in idx])
+    xt = torch.stack([torch.from_numpy(label_encode(prots[i], d["max_seq_len"], CHARPROTSET)) for i in idx])
+    return xd, xt
 
 
 class NssDTA(nn.Module):
@@ -156,13 +173,10 @@ class _OpTimer:
         for h in self.handles: h.remove()
 
 
-def run_plaintext(net, cnn, dataset, batch, device):
+def run_plaintext(net, cnn, dataset, batch, device, davis_index=None):
     """Torch-level check + timing (no NssMPClib): NssDTA == CNNDTA, and the per-op
     timing table you'll also get under 2PC. This is what runs in THIS sandbox."""
-    d = DEFAULTS[dataset]
-    torch.manual_seed(1)
-    xd = torch.randint(0, CHARISOSMILEN + 1, (batch, d["max_smi_len"]))
-    xt = torch.randint(0, CHARPROTLEN + 1, (batch, d["max_seq_len"]))
+    xd, xt = _input_tokens(dataset, batch, davis_index)
     drug, prot = onehot4d(xd, CHARISOSMILEN + 1).to(device), onehot4d(xt, CHARPROTLEN + 1).to(device)
     net = net.to(device)
     with torch.no_grad():
@@ -174,14 +188,60 @@ def run_plaintext(net, cnn, dataset, batch, device):
         if device.type == "cuda": torch.cuda.synchronize()
         total = time.time() - t0
     err = (ref - got).abs().max().item()
-    print(f"=== NssDTA plaintext check | pool={net.pool} | dev={device} ===")
+    pt = f"Davis test #{davis_index}" if davis_index is not None else "random tokens"
+    print(f"=== NssDTA plaintext check | pool={net.pool} | dev={device} | input={pt} ===")
     print(f"  NssDTA == CNNDTA(pool={net.pool}): max abs diff {err:.2e}  "
           f"({'OK' if err < 1e-4 else 'MISMATCH'})")
+    print(f"  cleartext affinity: {[round(v, 4) for v in got.flatten().tolist()]}")
     timer.report(batch, total)
     return err < 1e-4
 
 
-def run_secure(net, dataset, role, device):
+def _quant(x, s):
+    """Round to `s` fractional bits (the fixed-point grid, in float64)."""
+    scale = float(1 << s)
+    return torch.round(x * scale) / scale
+
+
+def run_fixedpoint(net, cnn, dataset, davis_index, batch, scales, device):
+    """Emulate MPC fixed-point arithmetic on regB and show how the float prediction
+    is affected: quantize weights to `s` fractional bits and truncate every
+    Conv/Linear output to `s` bits (ReLU/max are exact), for a real Davis point.
+    This is what the secure 64-bit FSS run (NssMPClib SCALE_BIT / Orca scale) computes
+    numerically -- runnable here for full-size regB (no ring, so no overflow)."""
+    import copy
+    xd, xt = _input_tokens(dataset, batch, davis_index)
+    drug = onehot4d(xd, CHARISOSMILEN + 1).double()
+    prot = onehot4d(xt, CHARPROTLEN + 1).double()
+    net = net.double().eval()
+    with torch.no_grad():
+        flt = net(drug, prot).squeeze(-1)
+    pt = f"Davis test #{davis_index}" if davis_index is not None else "random tokens"
+    print(f"=== regB fixed-point vs float | pool={net.pool} | input={pt} ===")
+    print(f"  float (cleartext) affinity: {[round(v, 5) for v in flt.flatten().tolist()]}")
+    print(f"  {'scale_bits':>10} {'fixed-point affinity':>22} {'abs_err':>11} {'rel_err':>9}")
+    for s in scales:
+        q = copy.deepcopy(net)
+        for m in q.modules():
+            if isinstance(m, (nn.Conv2d, nn.Linear)):
+                m.weight.data = _quant(m.weight.data, s)
+                if m.bias is not None:
+                    m.bias.data = _quant(m.bias.data, s)
+        hooks = [m.register_forward_hook(lambda mod, i, o, s=s: _quant(o, s))
+                 for m in q.modules() if isinstance(m, (nn.Conv2d, nn.Linear))]
+        with torch.no_grad():
+            fp = q(drug, prot).squeeze(-1)
+        for h in hooks:
+            h.remove()
+        err = (fp - flt).abs()
+        rel = (err / flt.abs().clamp(min=1e-9)).mean().item()
+        val = [round(v, 5) for v in fp.flatten().tolist()]
+        print(f"  {s:>10} {str(val):>22} {err.max().item():>11.2e} {rel:>9.2%}")
+    print("  (weights quantized to s bits; every Conv/Linear output truncated to s bits;"
+          "\n   ReLU/max-pool exact. This is the fixed-point effect the FSS scale controls.)")
+
+
+def run_secure(net, dataset, role, device, davis_index=None, batch=1):
     """NssMPClib 2PC secure inference. Mirrors XidianNSS/NssMPClib
     tests/application/neural_network/2pc/. Runs on the GPU VM (needs nssmpc)."""
     import nssmpc.application.neural_network as nn_mpc               # noqa
@@ -197,9 +257,7 @@ def run_secure(net, dataset, role, device):
             loader = nn_mpc.utils.SharedDataLoader(src_id=1)        # receives client input
         else:                                                       # client: holds secret input
             cipher = nn_mpc.utils.load_shared_param(cipher, nn_mpc.utils.share_model_param(model=net))
-            d = DEFAULTS[dataset]
-            xd = torch.randint(0, CHARISOSMILEN + 1, (1, d["max_smi_len"]))
-            xt = torch.randint(0, CHARPROTLEN + 1, (1, d["max_seq_len"]))
+            xd, xt = _input_tokens(dataset, batch, davis_index)
             drug, prot = onehot4d(xd, CHARISOSMILEN + 1), onehot4d(xt, CHARPROTLEN + 1)
             # NOTE: NssDTA.forward takes TWO tensors; the example's SharedDataLoader
             # yields one. On the VM, feed drug+prot either as a tuple batch or two
@@ -227,13 +285,23 @@ def main():
     ap.add_argument("--party", type=int, choices=[0, 1], default=None,
                     help="run NssMPClib 2PC as this party (needs nssmpc + a peer). "
                          "Omit for the plaintext torch check + timing.")
+    ap.add_argument("--davis-index", type=int, default=None,
+                    help="use this real test-set row as the secret input (else random tokens)")
+    ap.add_argument("--fixed-point", action="store_true",
+                    help="show the fixed-point-vs-float effect (scale-bit sweep) on the input")
+    ap.add_argument("--scale-bits", default="8,10,13,16,20",
+                    help="comma list of fractional bits for --fixed-point")
     args = ap.parse_args()
     device = torch.device(args.device if (args.device == "cpu" or torch.cuda.is_available()) else "cpu")
     net, cnn = nss_from_cnndta(args.summary, args.ckpt, args.config)
+    if args.fixed_point:
+        scales = [int(s) for s in args.scale_bits.split(",")]
+        run_fixedpoint(net, cnn, args.dataset, args.davis_index, args.batch, scales, device)
+        return
     if args.party is None:
-        ok = run_plaintext(net, cnn, args.dataset, args.batch, device)
+        ok = run_plaintext(net, cnn, args.dataset, args.batch, device, args.davis_index)
         raise SystemExit(0 if ok else 1)
-    run_secure(net, args.dataset, args.party, device)
+    run_secure(net, args.dataset, args.party, device, args.davis_index, args.batch)
 
 
 if __name__ == "__main__":
