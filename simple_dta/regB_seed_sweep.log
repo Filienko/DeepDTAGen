@@ -1,0 +1,21 @@
+=== SEED 1 start 14:51:35 ===
+
+=== BEST [cnn_davis_regB_sweep_s1_gpu] === epoch 70 | MSE 0.2581 | CI 0.8858 | rm2 0.6104
+params 800,417 | mean 4.7s/epoch | total 7.8 min
+=== SEED 7 start 15:00:01 ===
+
+=== BEST [cnn_davis_regB_sweep_s7_gpu] === epoch 50 | MSE 0.3214 | CI 0.8784 | rm2 0.6363
+params 800,417 | mean 4.0s/epoch | total 6.7 min
+=== SEED 42 start 15:07:12 ===
+
+=== BEST [cnn_davis_regB_sweep_s42_gpu] === epoch 60 | MSE 0.3039 | CI 0.8851 | rm2 0.6454
+params 800,417 | mean 3.9s/epoch | total 6.5 min
+=== SEED 123 start 15:14:15 ===
+
+=== BEST [cnn_davis_regB_sweep_s123_gpu] === epoch 95 | MSE 0.2253 | CI 0.8894 | rm2 0.6525
+params 800,417 | mean 3.9s/epoch | total 6.5 min
+=== SEED 2024 start 15:21:13 ===
+
+=== BEST [cnn_davis_regB_sweep_s2024_gpu] === epoch 90 | MSE 0.2413 | CI 0.8890 | rm2 0.6888
+params 800,417 | mean 4.7s/epoch | total 7.8 min
+=== SWEEP DONE 15:29:34 ===

@@ -150,9 +150,19 @@ def make_parser():
     ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--batch-size", type=int, default=256)
     ap.add_argument("--lr", type=float, default=1e-3)
-    ap.add_argument("--pool", choices=["max", "mean", "maxmean"], default="max",
+    ap.add_argument("--pool", choices=["max", "mean", "maxmean", "meank", "attn"], default="max",
                     help="global pooling; mean is MPC-friendly, max matches baseline, "
-                         "maxmean concatenates both (doubles tower out dim)")
+                         "maxmean concatenates both (doubles tower out dim), meank "
+                         "averages into --pool-bins segments then flattens (free under "
+                         "FSS like mean, but keeps positional structure; xbins out dim), "
+                         "attn = softmax-free linear-attention pool with a learned query "
+                         "(content-based, concentrates on the peak; out dim == channels)")
+    ap.add_argument("--pool-bins", type=int, default=4,
+                    help="meank only: number of average-pooled segments per tower "
+                         "(k=1 == mean; larger k restores positional resolution)")
+    ap.add_argument("--pool-heads", type=int, default=4,
+                    help="attn only: number of linear-attention heads (must divide each "
+                         "tower's channel count)")
     ap.add_argument("--drug-filters", type=int, default=32,
                     help="CNN: base filter count for the drug (SMILES) tower (f, 2f, 3f)")
     ap.add_argument("--prot-filters", type=int, default=32,
@@ -223,7 +233,9 @@ def build_model(args, device=None):
                        prot_dilations=_il(args.prot_dilations),
                        drug_kernel=args.drug_kernel,
                        prot_kernel=args.prot_kernel,
-                       ablate=args.ablate).to(device)
+                       ablate=args.ablate,
+                       pool_bins=args.pool_bins,
+                       pool_heads=args.pool_heads).to(device)
     elif args.model == "gnn":
         from data import FEATURIZERS
         node_feat_dim = FEATURIZERS[args.node_feat][1]
@@ -335,7 +347,8 @@ def main():
         "epochs": args.epochs, "params": count_params(model),
         "mean_epoch_sec": float(np.mean(epoch_times)),
         "total_train_sec": float(np.sum(epoch_times)),
-        "best": best, "pool": args.pool, "head_dim": args.head_dim,
+        "best": best, "pool": args.pool, "pool_bins": args.pool_bins,
+        "pool_heads": args.pool_heads, "head_dim": args.head_dim,
         "head_layers": args.head_layers, "seed": args.seed,
         "node_feat": args.node_feat, "gcn_dim": args.gcn_dim,
         "gcn_layers": args.gcn_layers, "embed_dim": args.embed_dim,

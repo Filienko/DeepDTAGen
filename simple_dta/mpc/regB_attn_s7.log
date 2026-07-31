@@ -1,0 +1,50 @@
+=== cnn_davis_regB_attn_h4_s7 | device=cuda:0 | pool=attn | head_dim=1024 | head_layers=2 | seed=7 | embed_dim=128 ===
+Trainable parameters: 847,217
+[cnn_davis_regB_attn_h4_s7] epoch   5 |   4.1s | train_mse 0.6450 | test MSE 0.6289 CI 0.7513 rm2 0.2160 Pearson 0.4663 balAcc 0.5671
+[cnn_davis_regB_attn_h4_s7] epoch  10 |   4.1s | train_mse 0.5340 | test MSE 0.5512 CI 0.7918 rm2 0.3424 Pearson 0.5891 balAcc 0.6260
+[cnn_davis_regB_attn_h4_s7] epoch  15 |   4.1s | train_mse 0.5076 | test MSE 0.4971 CI 0.8138 rm2 0.3761 Pearson 0.6171 balAcc 0.6139
+[cnn_davis_regB_attn_h4_s7] epoch  20 |   4.1s | train_mse 0.4959 | test MSE 0.4845 CI 0.8137 rm2 0.3953 Pearson 0.6305 balAcc 0.6178
+[cnn_davis_regB_attn_h4_s7] epoch  25 |   4.1s | train_mse 0.4871 | test MSE 0.5813 CI 0.8064 rm2 0.3951 Pearson 0.6321 balAcc 0.5819
+[cnn_davis_regB_attn_h4_s7] epoch  30 |   4.1s | train_mse 0.4698 | test MSE 0.5019 CI 0.8082 rm2 0.3679 Pearson 0.6221 balAcc 0.5976
+[cnn_davis_regB_attn_h4_s7] epoch  35 |   4.1s | train_mse 0.4645 | test MSE 0.4622 CI 0.8227 rm2 0.4202 Pearson 0.6571 balAcc 0.6213
+[cnn_davis_regB_attn_h4_s7] epoch  40 |   4.1s | train_mse 0.4507 | test MSE 0.4587 CI 0.8215 rm2 0.4368 Pearson 0.6648 balAcc 0.6268
+[cnn_davis_regB_attn_h4_s7] epoch  45 |   4.1s | train_mse 0.4207 | test MSE 0.4330 CI 0.8291 rm2 0.4313 Pearson 0.6835 balAcc 0.6759
+[cnn_davis_regB_attn_h4_s7] epoch  50 |   4.1s | train_mse 0.3860 | test MSE 0.3942 CI 0.8346 rm2 0.4771 Pearson 0.7233 balAcc 0.6713
+[cnn_davis_regB_attn_h4_s7] epoch  55 |   4.1s | train_mse 0.3551 | test MSE 0.3655 CI 0.8527 rm2 0.5013 Pearson 0.7450 balAcc 0.7348
+[cnn_davis_regB_attn_h4_s7] epoch  60 |   4.1s | train_mse 0.3438 | test MSE 0.3773 CI 0.8572 rm2 0.5353 Pearson 0.7616 balAcc 0.6462
+[cnn_davis_regB_attn_h4_s7] epoch  65 |   4.1s | train_mse 0.3131 | test MSE 0.3333 CI 0.8547 rm2 0.5721 Pearson 0.7650 balAcc 0.7296
+[cnn_davis_regB_attn_h4_s7] epoch  70 |   4.1s | train_mse 0.3058 | test MSE 0.3153 CI 0.8681 rm2 0.5895 Pearson 0.7795 balAcc 0.7268
+[cnn_davis_regB_attn_h4_s7] epoch  75 |   4.1s | train_mse 0.3026 | test MSE 0.3561 CI 0.8552 rm2 0.5627 Pearson 0.7675 balAcc 0.6722
+[cnn_davis_regB_attn_h4_s7] epoch  80 |   4.1s | train_mse 0.2842 | test MSE 0.3750 CI 0.8639 rm2 0.5947 Pearson 0.7836 balAcc 0.7853
+[cnn_davis_regB_attn_h4_s7] epoch  85 |   4.1s | train_mse 0.2783 | test MSE 0.3295 CI 0.8615 rm2 0.5927 Pearson 0.7803 balAcc 0.7559
+[cnn_davis_regB_attn_h4_s7] epoch  90 |   4.1s | train_mse 0.2717 | test MSE 0.3042 CI 0.8703 rm2 0.6003 Pearson 0.7942 balAcc 0.6980
+[cnn_davis_regB_attn_h4_s7] epoch  95 |   4.1s | train_mse 0.2570 | test MSE 0.3117 CI 0.8653 rm2 0.6216 Pearson 0.7982 balAcc 0.7181
+[cnn_davis_regB_attn_h4_s7] epoch 100 |   4.1s | train_mse 0.2530 | test MSE 0.2906 CI 0.8711 rm2 0.6279 Pearson 0.8006 balAcc 0.7622
+
+=== BEST [cnn_davis_regB_attn_h4_s7] === epoch 80 | MSE 0.3750 | CI 0.8639 | rm2 0.5947
+params 847,217 | mean 4.1s/epoch | total 6.8 min
+=== cnn_davis_regB_attn_h8_s7 | device=cuda:0 | pool=attn | head_dim=1024 | head_layers=2 | seed=7 | embed_dim=128 ===
+Trainable parameters: 847,217
+[cnn_davis_regB_attn_h8_s7] epoch   5 |   4.2s | train_mse 0.6469 | test MSE 0.6256 CI 0.7522 rm2 0.2189 Pearson 0.4705 balAcc 0.5678
+[cnn_davis_regB_attn_h8_s7] epoch  10 |   4.2s | train_mse 0.5414 | test MSE 0.5349 CI 0.7850 rm2 0.3301 Pearson 0.5784 balAcc 0.5996
+[cnn_davis_regB_attn_h8_s7] epoch  15 |   4.2s | train_mse 0.5111 | test MSE 0.4995 CI 0.8128 rm2 0.3725 Pearson 0.6140 balAcc 0.6150
+[cnn_davis_regB_attn_h8_s7] epoch  20 |   4.2s | train_mse 0.4939 | test MSE 0.4893 CI 0.8143 rm2 0.3891 Pearson 0.6268 balAcc 0.6158
+[cnn_davis_regB_attn_h8_s7] epoch  25 |   4.2s | train_mse 0.4906 | test MSE 0.5968 CI 0.7982 rm2 0.3835 Pearson 0.6212 balAcc 0.5774
+[cnn_davis_regB_attn_h8_s7] epoch  30 |   4.2s | train_mse 0.4751 | test MSE 0.5112 CI 0.7988 rm2 0.3579 Pearson 0.6097 balAcc 0.6007
+[cnn_davis_regB_attn_h8_s7] epoch  35 |   4.2s | train_mse 0.4701 | test MSE 0.4695 CI 0.8197 rm2 0.4166 Pearson 0.6529 balAcc 0.6178
+[cnn_davis_regB_attn_h8_s7] epoch  40 |   4.2s | train_mse 0.4559 | test MSE 0.4617 CI 0.8199 rm2 0.4377 Pearson 0.6652 balAcc 0.6200
+[cnn_davis_regB_attn_h8_s7] epoch  45 |   4.2s | train_mse 0.4337 | test MSE 0.4422 CI 0.8319 rm2 0.4290 Pearson 0.6810 balAcc 0.6788
+[cnn_davis_regB_attn_h8_s7] epoch  50 |   4.2s | train_mse 0.4029 | test MSE 0.4239 CI 0.8280 rm2 0.4586 Pearson 0.7028 balAcc 0.6642
+[cnn_davis_regB_attn_h8_s7] epoch  55 |   4.2s | train_mse 0.3677 | test MSE 0.3841 CI 0.8464 rm2 0.4954 Pearson 0.7289 balAcc 0.7166
+[cnn_davis_regB_attn_h8_s7] epoch  60 |   4.2s | train_mse 0.3471 | test MSE 0.3864 CI 0.8494 rm2 0.5180 Pearson 0.7457 balAcc 0.6415
+[cnn_davis_regB_attn_h8_s7] epoch  65 |   4.2s | train_mse 0.3256 | test MSE 0.3576 CI 0.8540 rm2 0.5248 Pearson 0.7525 balAcc 0.7436
+[cnn_davis_regB_attn_h8_s7] epoch  70 |   4.2s | train_mse 0.3156 | test MSE 0.3333 CI 0.8660 rm2 0.5781 Pearson 0.7687 balAcc 0.7334
+[cnn_davis_regB_attn_h8_s7] epoch  75 |   4.2s | train_mse 0.3078 | test MSE 0.3321 CI 0.8595 rm2 0.5665 Pearson 0.7726 balAcc 0.6928
+[cnn_davis_regB_attn_h8_s7] epoch  80 |   4.2s | train_mse 0.2893 | test MSE 0.3687 CI 0.8660 rm2 0.5952 Pearson 0.7774 balAcc 0.7621
+[cnn_davis_regB_attn_h8_s7] epoch  85 |   4.2s | train_mse 0.2798 | test MSE 0.3329 CI 0.8672 rm2 0.5978 Pearson 0.7866 balAcc 0.7751
+[cnn_davis_regB_attn_h8_s7] epoch  90 |   4.2s | train_mse 0.2790 | test MSE 0.3090 CI 0.8701 rm2 0.6202 Pearson 0.7902 balAcc 0.7085
+[cnn_davis_regB_attn_h8_s7] epoch  95 |   4.2s | train_mse 0.2651 | test MSE 0.3186 CI 0.8679 rm2 0.6115 Pearson 0.7965 balAcc 0.7166
+[cnn_davis_regB_attn_h8_s7] epoch 100 |   4.2s | train_mse 0.2606 | test MSE 0.2862 CI 0.8733 rm2 0.6363 Pearson 0.8021 balAcc 0.7559
+
+=== BEST [cnn_davis_regB_attn_h8_s7] === epoch 85 | MSE 0.3329 | CI 0.8672 | rm2 0.5978
+params 847,217 | mean 4.2s/epoch | total 7.0 min

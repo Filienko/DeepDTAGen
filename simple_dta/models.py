@@ -17,11 +17,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from data import CHARISOSMILEN, CHARPROTLEN, NODE_FEATURE_DIM, EDGE_FEATURE_DIM
-from attention import CrossAttentionFusion, ProteinTransformer, DrugGraphTransformer, masked_pool
+from attention import (CrossAttentionFusion, ProteinTransformer, DrugGraphTransformer,
+                       masked_pool, MultiHeadAttention)
 
 
-def _pool1d(x, mode):
-    # x: [batch, channels, length] -> [batch, channels] (or [batch, 2*channels] for maxmean)
+def _pool1d(x, mode, bins=1):
+    # x: [batch, channels, length] -> [batch, channels] (or [batch, 2*channels] for
+    # maxmean; [batch, bins*channels] for meank).
     if mode == "max":
         return F.adaptive_max_pool1d(x, 1).squeeze(-1)
     if mode == "mean":
@@ -30,35 +32,91 @@ def _pool1d(x, mode):
         mx = F.adaptive_max_pool1d(x, 1).squeeze(-1)
         mn = F.adaptive_avg_pool1d(x, 1).squeeze(-1)
         return torch.cat([mx, mn], dim=1)
+    if mode == "meank":
+        # k-bin average pooling: collapse length to `bins` contiguous segments and
+        # flatten -> [B, bins*C]. A fixed public linear map on fixed-length inputs, so
+        # it is as free under FSS as plain mean-pool (0 secure comparisons) while
+        # keeping the coarse positional structure that global mean averages away.
+        return F.adaptive_avg_pool1d(x, bins).flatten(1)
     raise ValueError(f"unknown pool mode {mode}")
 
 
-def _build_conv_stack(embed_dim, num_filters, channels, dilations):
-    """channels: list of out-channels per layer (default [f,2f,3f]); dilations: per-layer."""
+def _pool_mult(pool, bins=1):
+    """Out-dim multiplier a pool mode applies to the last channel count:
+    maxmean concatenates max+mean (x2); meank flattens `bins` segments (xbins)."""
+    if pool == "maxmean":
+        return 2
+    if pool == "meank":
+        return bins
+    return 1
+
+
+class LinearAttentionPool(nn.Module):
+    """Attention pooling: a single learned query attends over the tower's L
+    positions and returns one [B, C] vector -- a *content-based* weighted sum
+    that can concentrate on the peak motif position (recovering what max-pool
+    captures), unlike the position-blind avg/meank pools.
+
+    Uses the project's softmax-free linear attention (attention.MultiHeadAttention
+    kind='linear'): only ELU feature maps (same nonlinearity class as the towers'
+    ReLU) + matmuls + one reciprocal per head for the denominator -- NO softmax,
+    NO log(L) max tournament. out_dim == in_dim, so the head stays the same width
+    as max/mean pooling.
+    """
+
+    def __init__(self, in_dim, n_heads=4, dropout=0.0):
+        super().__init__()
+        assert in_dim % n_heads == 0, f"pool_heads ({n_heads}) must divide channels ({in_dim})"
+        self.query = nn.Parameter(torch.randn(1, 1, in_dim) * 0.02)   # one learned query
+        self.attn = MultiHeadAttention(in_dim, n_heads, kind="linear", dropout=dropout)
+        self.out_dim = in_dim
+
+    def forward(self, x):
+        # x: [B, C, L] -> attend over L with the learned query -> [B, C]
+        seq = x.transpose(1, 2)                      # [B, L, C]
+        q = self.query.expand(seq.size(0), -1, -1)   # [B, 1, C]
+        return self.attn(q, seq).squeeze(1)          # [B, C]
+
+
+def _build_conv_stack(embed_dim, num_filters, channels, dilations, strides=None):
+    """channels: list of out-channels per layer (default [f,2f,3f]); dilations/strides: per-layer.
+
+    `strides` > 1 down-sample the sequence inside the existing Conv1d (no new op).
+    This is the MPC lever: stride costs *zero* secure comparisons -- it simply
+    evaluates the conv at fewer positions -- yet it shrinks every downstream ReLU
+    *and* the final max-pool tournament, which together dominate the FSS cost.
+    """
     if channels is None:
         channels = [num_filters, num_filters * 2, num_filters * 3]
     if dilations is None:
         dilations = [1] * len(channels)
+    if strides is None:
+        strides = [1] * len(channels)
     assert len(dilations) == len(channels), "dilations must match channels length"
+    assert len(strides) == len(channels), "strides must match channels length"
     convs, in_c = [], embed_dim
-    for out_c, kd, d in [(c, None, dd) for c, dd in zip(channels, dilations)]:
-        convs.append((in_c, out_c, d))
+    for out_c, d, s in zip(channels, dilations, strides):
+        convs.append((in_c, out_c, d, s))
         in_c = out_c
-    return channels, dilations, convs
+    return channels, dilations, strides, convs
 
 
 class ProteinCNN(nn.Module):
     """Embedding -> N Conv1d layers -> global pool. Output dim = channels[-1] (x2 if maxmean)."""
 
     def __init__(self, embed_dim=128, num_filters=32, kernel_size=8, pool="max",
-                 channels=None, dilations=None):
+                 channels=None, dilations=None, pool_bins=1, pool_heads=4, strides=None):
         super().__init__()
         self.pool = pool
+        self.pool_bins = pool_bins
         self.embed = nn.Embedding(CHARPROTLEN + 1, embed_dim, padding_idx=0)
-        channels, dilations, spec = _build_conv_stack(embed_dim, num_filters, channels, dilations)
+        channels, dilations, strides, spec = _build_conv_stack(
+            embed_dim, num_filters, channels, dilations, strides)
+        self.strides = strides
         self.convs = nn.ModuleList(
-            [nn.Conv1d(i, o, kernel_size, dilation=d) for i, o, d in spec])
-        self.out_dim = channels[-1] * (2 if pool == "maxmean" else 1)
+            [nn.Conv1d(i, o, kernel_size, dilation=d, stride=s) for i, o, d, s in spec])
+        self.attn_pool = LinearAttentionPool(channels[-1], pool_heads) if pool == "attn" else None
+        self.out_dim = channels[-1] * _pool_mult(pool, pool_bins)
 
     def forward(self, target, return_seq=False):
         x = self.embed(target).transpose(1, 2)  # [B, embed, L]
@@ -66,21 +124,25 @@ class ProteinCNN(nn.Module):
             x = F.relu(conv(x))
         if return_seq:
             return x.transpose(1, 2)  # [B, L', C] for cross-attention fusion
-        return _pool1d(x, self.pool)
+        if self.pool == "attn":
+            return self.attn_pool(x)
+        return _pool1d(x, self.pool, self.pool_bins)
 
 
 class SmilesCNN(nn.Module):
     """Embedding -> N Conv1d layers -> global pool. Output dim = channels[-1] (x2 if maxmean)."""
 
     def __init__(self, embed_dim=128, num_filters=32, kernel_size=4, pool="max",
-                 channels=None, dilations=None):
+                 channels=None, dilations=None, pool_bins=1, pool_heads=4):
         super().__init__()
         self.pool = pool
+        self.pool_bins = pool_bins
         self.embed = nn.Embedding(CHARISOSMILEN + 1, embed_dim, padding_idx=0)
         channels, dilations, spec = _build_conv_stack(embed_dim, num_filters, channels, dilations)
         self.convs = nn.ModuleList(
             [nn.Conv1d(i, o, kernel_size, dilation=d) for i, o, d in spec])
-        self.out_dim = channels[-1] * (2 if pool == "maxmean" else 1)
+        self.attn_pool = LinearAttentionPool(channels[-1], pool_heads) if pool == "attn" else None
+        self.out_dim = channels[-1] * _pool_mult(pool, pool_bins)
 
     def forward(self, smiles, return_seq=False):
         x = self.embed(smiles).transpose(1, 2)  # [B, embed, L]
@@ -88,7 +150,9 @@ class SmilesCNN(nn.Module):
             x = F.relu(conv(x))
         if return_seq:
             return x.transpose(1, 2)  # [B, L', C] for cross-attention fusion
-        return _pool1d(x, self.pool)
+        if self.pool == "attn":
+            return self.attn_pool(x)
+        return _pool1d(x, self.pool, self.pool_bins)
 
 
 class PredictionHead(nn.Module):
@@ -132,7 +196,7 @@ class CNNDTA(nn.Module):
                  embed_dim=128, dropout=0.1, pool="max", head_dim=1024,
                  head_layers=2, proj_dim=0, drug_channels=None, prot_channels=None,
                  drug_dilations=None, prot_dilations=None,
-                 drug_kernel=4, prot_kernel=8, ablate="none"):
+                 drug_kernel=4, prot_kernel=8, ablate="none", pool_bins=1, pool_heads=4):
         super().__init__()
         assert ablate in ("none", "drug", "protein"), f"unknown ablate mode {ablate}"
         self.ablate = ablate
@@ -140,10 +204,12 @@ class CNNDTA(nn.Module):
         prot_filters = prot_filters or num_filters
         self.drug = None if ablate == "drug" else SmilesCNN(
             embed_dim, drug_filters, kernel_size=drug_kernel, pool=pool,
-            channels=drug_channels, dilations=drug_dilations)
+            channels=drug_channels, dilations=drug_dilations, pool_bins=pool_bins,
+            pool_heads=pool_heads)
         self.protein = None if ablate == "protein" else ProteinCNN(
             embed_dim, prot_filters, kernel_size=prot_kernel, pool=pool,
-            channels=prot_channels, dilations=prot_dilations)
+            channels=prot_channels, dilations=prot_dilations, pool_bins=pool_bins,
+            pool_heads=pool_heads)
         self.proj_dim = proj_dim
         if proj_dim:
             # compress each surviving tower to a compact binding embedding before the head

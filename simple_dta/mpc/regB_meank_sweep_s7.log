@@ -1,0 +1,129 @@
+
+[1;36m[regB-meank][0m training regB pool=meank k=2 seed=7  (tag cnn_davis_regB_meank2_s7, epochs=100)
+=== cnn_davis_regB_meank2_s7 | device=cuda:0 | pool=meank | head_dim=1024 | head_layers=2 | seed=7 | embed_dim=128 ===
+Trainable parameters: 947,873
+[cnn_davis_regB_meank2_s7] epoch   5 |   3.5s | train_mse 0.6319 | test MSE 0.6278 CI 0.7702 rm2 0.2495 Pearson 0.5022 balAcc 0.5871
+[cnn_davis_regB_meank2_s7] epoch  10 |   3.5s | train_mse 0.5753 | test MSE 0.5721 CI 0.7845 rm2 0.2866 Pearson 0.5401 balAcc 0.5741
+[cnn_davis_regB_meank2_s7] epoch  15 |   3.5s | train_mse 0.5535 | test MSE 0.5424 CI 0.7955 rm2 0.3412 Pearson 0.5863 balAcc 0.5894
+[cnn_davis_regB_meank2_s7] epoch  20 |   3.5s | train_mse 0.4946 | test MSE 0.4828 CI 0.8187 rm2 0.3996 Pearson 0.6338 balAcc 0.6312
+[cnn_davis_regB_meank2_s7] epoch  25 |   3.5s | train_mse 0.5000 | test MSE 0.4800 CI 0.8122 rm2 0.3922 Pearson 0.6344 balAcc 0.6283
+[cnn_davis_regB_meank2_s7] epoch  30 |   3.5s | train_mse 0.4582 | test MSE 0.4899 CI 0.8208 rm2 0.4220 Pearson 0.6561 balAcc 0.6561
+[cnn_davis_regB_meank2_s7] epoch  35 |   3.5s | train_mse 0.4170 | test MSE 0.4311 CI 0.8290 rm2 0.4536 Pearson 0.6912 balAcc 0.6912
+[cnn_davis_regB_meank2_s7] epoch  40 |   3.5s | train_mse 0.3744 | test MSE 0.3883 CI 0.8410 rm2 0.5267 Pearson 0.7304 balAcc 0.7115
+[cnn_davis_regB_meank2_s7] epoch  45 |   3.5s | train_mse 0.3713 | test MSE 0.3656 CI 0.8459 rm2 0.5301 Pearson 0.7382 balAcc 0.6900
+[cnn_davis_regB_meank2_s7] epoch  50 |   3.5s | train_mse 0.3225 | test MSE 0.3406 CI 0.8601 rm2 0.5588 Pearson 0.7620 balAcc 0.7159
+[cnn_davis_regB_meank2_s7] epoch  55 |   3.5s | train_mse 0.3085 | test MSE 0.3332 CI 0.8613 rm2 0.5706 Pearson 0.7692 balAcc 0.6922
+[cnn_davis_regB_meank2_s7] epoch  60 |   3.5s | train_mse 0.2968 | test MSE 0.3123 CI 0.8688 rm2 0.6062 Pearson 0.7818 balAcc 0.7265
+[cnn_davis_regB_meank2_s7] epoch  65 |   3.5s | train_mse 0.2789 | test MSE 0.3080 CI 0.8667 rm2 0.6158 Pearson 0.7874 balAcc 0.7251
+[cnn_davis_regB_meank2_s7] epoch  70 |   3.5s | train_mse 0.2726 | test MSE 0.2998 CI 0.8764 rm2 0.5996 Pearson 0.7929 balAcc 0.7380
+[cnn_davis_regB_meank2_s7] epoch  75 |   3.5s | train_mse 0.2655 | test MSE 0.2906 CI 0.8756 rm2 0.6158 Pearson 0.7990 balAcc 0.7474
+[cnn_davis_regB_meank2_s7] epoch  80 |   3.5s | train_mse 0.2535 | test MSE 0.2959 CI 0.8727 rm2 0.6290 Pearson 0.8007 balAcc 0.7263
+[cnn_davis_regB_meank2_s7] epoch  85 |   3.5s | train_mse 0.2417 | test MSE 0.3520 CI 0.8752 rm2 0.6414 Pearson 0.8064 balAcc 0.6867
+[cnn_davis_regB_meank2_s7] epoch  90 |   3.5s | train_mse 0.2284 | test MSE 0.2720 CI 0.8794 rm2 0.6397 Pearson 0.8143 balAcc 0.7492
+[cnn_davis_regB_meank2_s7] epoch  95 |   3.5s | train_mse 0.2188 | test MSE 0.2712 CI 0.8788 rm2 0.6614 Pearson 0.8163 balAcc 0.7363
+[cnn_davis_regB_meank2_s7] epoch 100 |   3.5s | train_mse 0.2117 | test MSE 0.2653 CI 0.8755 rm2 0.6505 Pearson 0.8186 balAcc 0.7428
+
+=== BEST [cnn_davis_regB_meank2_s7] === epoch 90 | MSE 0.2720 | CI 0.8794 | rm2 0.6397
+params 947,873 | mean 3.5s/epoch | total 5.8 min
+
+[1;36m[regB-meank][0m training regB pool=meank k=4 seed=7  (tag cnn_davis_regB_meank4_s7, epochs=100)
+=== cnn_davis_regB_meank4_s7 | device=cuda:0 | pool=meank | head_dim=1024 | head_layers=2 | seed=7 | embed_dim=128 ===
+Trainable parameters: 1,242,785
+[cnn_davis_regB_meank4_s7] epoch   5 |   3.4s | train_mse 0.6123 | test MSE 0.6079 CI 0.7721 rm2 0.2687 Pearson 0.5209 balAcc 0.5897
+[cnn_davis_regB_meank4_s7] epoch  10 |   3.4s | train_mse 0.5984 | test MSE 0.5864 CI 0.7895 rm2 0.3052 Pearson 0.5550 balAcc 0.5677
+[cnn_davis_regB_meank4_s7] epoch  15 |   3.4s | train_mse 0.5542 | test MSE 0.6109 CI 0.8000 rm2 0.3371 Pearson 0.5823 balAcc 0.5683
+[cnn_davis_regB_meank4_s7] epoch  20 |   3.4s | train_mse 0.4972 | test MSE 0.4889 CI 0.8113 rm2 0.3876 Pearson 0.6289 balAcc 0.6264
+[cnn_davis_regB_meank4_s7] epoch  25 |   3.4s | train_mse 0.4713 | test MSE 0.4794 CI 0.8191 rm2 0.4063 Pearson 0.6454 balAcc 0.6535
+[cnn_davis_regB_meank4_s7] epoch  30 |   3.4s | train_mse 0.4478 | test MSE 0.4527 CI 0.8190 rm2 0.4325 Pearson 0.6622 balAcc 0.6577
+[cnn_davis_regB_meank4_s7] epoch  35 |   3.4s | train_mse 0.4037 | test MSE 0.3851 CI 0.8378 rm2 0.5002 Pearson 0.7221 balAcc 0.6757
+[cnn_davis_regB_meank4_s7] epoch  40 |   3.4s | train_mse 0.3629 | test MSE 0.3615 CI 0.8473 rm2 0.5251 Pearson 0.7423 balAcc 0.6888
+[cnn_davis_regB_meank4_s7] epoch  45 |   3.4s | train_mse 0.3432 | test MSE 0.3633 CI 0.8630 rm2 0.5763 Pearson 0.7621 balAcc 0.7366
+[cnn_davis_regB_meank4_s7] epoch  50 |   3.4s | train_mse 0.3293 | test MSE 0.3882 CI 0.8661 rm2 0.5418 Pearson 0.7625 balAcc 0.6829
+[cnn_davis_regB_meank4_s7] epoch  55 |   3.4s | train_mse 0.3098 | test MSE 0.3466 CI 0.8648 rm2 0.5787 Pearson 0.7694 balAcc 0.6947
+[cnn_davis_regB_meank4_s7] epoch  60 |   3.4s | train_mse 0.3139 | test MSE 0.3261 CI 0.8656 rm2 0.5858 Pearson 0.7742 balAcc 0.7065
+[cnn_davis_regB_meank4_s7] epoch  65 |   3.4s | train_mse 0.2994 | test MSE 0.3275 CI 0.8682 rm2 0.5744 Pearson 0.7751 balAcc 0.7249
+[cnn_davis_regB_meank4_s7] epoch  70 |   3.4s | train_mse 0.2864 | test MSE 0.3086 CI 0.8695 rm2 0.5812 Pearson 0.7868 balAcc 0.7500
+[cnn_davis_regB_meank4_s7] epoch  75 |   3.4s | train_mse 0.2752 | test MSE 0.3348 CI 0.8668 rm2 0.5908 Pearson 0.7790 balAcc 0.6858
+[cnn_davis_regB_meank4_s7] epoch  80 |   3.4s | train_mse 0.2669 | test MSE 0.2994 CI 0.8745 rm2 0.6268 Pearson 0.7964 balAcc 0.7185
+[cnn_davis_regB_meank4_s7] epoch  85 |   3.4s | train_mse 0.2565 | test MSE 0.2894 CI 0.8773 rm2 0.6409 Pearson 0.8054 balAcc 0.7279
+[cnn_davis_regB_meank4_s7] epoch  90 |   3.4s | train_mse 0.2489 | test MSE 0.2795 CI 0.8760 rm2 0.6410 Pearson 0.8073 balAcc 0.7481
+[cnn_davis_regB_meank4_s7] epoch  95 |   3.4s | train_mse 0.2372 | test MSE 0.2756 CI 0.8749 rm2 0.6518 Pearson 0.8101 balAcc 0.7455
+[cnn_davis_regB_meank4_s7] epoch 100 |   3.4s | train_mse 0.2305 | test MSE 0.2754 CI 0.8773 rm2 0.6545 Pearson 0.8119 balAcc 0.7574
+
+=== BEST [cnn_davis_regB_meank4_s7] === epoch 100 | MSE 0.2754 | CI 0.8773 | rm2 0.6545
+params 1,242,785 | mean 3.4s/epoch | total 5.7 min
+
+[1;36m[regB-meank][0m training regB pool=meank k=8 seed=7  (tag cnn_davis_regB_meank8_s7, epochs=100)
+=== cnn_davis_regB_meank8_s7 | device=cuda:0 | pool=meank | head_dim=1024 | head_layers=2 | seed=7 | embed_dim=128 ===
+Trainable parameters: 1,832,609
+[cnn_davis_regB_meank8_s7] epoch   5 |   3.5s | train_mse 0.6347 | test MSE 0.6158 CI 0.7575 rm2 0.2318 Pearson 0.4858 balAcc 0.5707
+[cnn_davis_regB_meank8_s7] epoch  10 |   3.5s | train_mse 0.5894 | test MSE 0.6506 CI 0.7899 rm2 0.3030 Pearson 0.5523 balAcc 0.5559
+[cnn_davis_regB_meank8_s7] epoch  15 |   3.5s | train_mse 0.5303 | test MSE 0.5173 CI 0.8001 rm2 0.3592 Pearson 0.6031 balAcc 0.6232
+[cnn_davis_regB_meank8_s7] epoch  20 |   3.5s | train_mse 0.4990 | test MSE 0.4775 CI 0.8122 rm2 0.4050 Pearson 0.6381 balAcc 0.6208
+[cnn_davis_regB_meank8_s7] epoch  25 |   3.5s | train_mse 0.4588 | test MSE 0.4534 CI 0.8260 rm2 0.4488 Pearson 0.6829 balAcc 0.6723
+[cnn_davis_regB_meank8_s7] epoch  30 |   3.5s | train_mse 0.3901 | test MSE 0.3812 CI 0.8391 rm2 0.5179 Pearson 0.7249 balAcc 0.6761
+[cnn_davis_regB_meank8_s7] epoch  35 |   3.5s | train_mse 0.3731 | test MSE 0.4237 CI 0.8524 rm2 0.5489 Pearson 0.7465 balAcc 0.6473
+[cnn_davis_regB_meank8_s7] epoch  40 |   3.5s | train_mse 0.3524 | test MSE 0.3502 CI 0.8588 rm2 0.5678 Pearson 0.7608 balAcc 0.6824
+[cnn_davis_regB_meank8_s7] epoch  45 |   3.5s | train_mse 0.3312 | test MSE 0.3401 CI 0.8618 rm2 0.5591 Pearson 0.7656 balAcc 0.7086
+[cnn_davis_regB_meank8_s7] epoch  50 |   3.5s | train_mse 0.3210 | test MSE 0.4051 CI 0.8639 rm2 0.5856 Pearson 0.7694 balAcc 0.6596
+[cnn_davis_regB_meank8_s7] epoch  55 |   3.5s | train_mse 0.3034 | test MSE 0.3098 CI 0.8662 rm2 0.6056 Pearson 0.7843 balAcc 0.7293
+[cnn_davis_regB_meank8_s7] epoch  60 |   3.5s | train_mse 0.2970 | test MSE 0.3108 CI 0.8642 rm2 0.6080 Pearson 0.7836 balAcc 0.7362
+[cnn_davis_regB_meank8_s7] epoch  65 |   3.5s | train_mse 0.2875 | test MSE 0.3002 CI 0.8724 rm2 0.6114 Pearson 0.7911 balAcc 0.7354
+[cnn_davis_regB_meank8_s7] epoch  70 |   3.5s | train_mse 0.2669 | test MSE 0.3091 CI 0.8653 rm2 0.6160 Pearson 0.7894 balAcc 0.7528
+[cnn_davis_regB_meank8_s7] epoch  75 |   3.5s | train_mse 0.2705 | test MSE 0.3009 CI 0.8668 rm2 0.6023 Pearson 0.7982 balAcc 0.7414
+[cnn_davis_regB_meank8_s7] epoch  80 |   3.5s | train_mse 0.2488 | test MSE 0.3064 CI 0.8729 rm2 0.6184 Pearson 0.8031 balAcc 0.7565
+[cnn_davis_regB_meank8_s7] epoch  85 |   3.5s | train_mse 0.2452 | test MSE 0.2901 CI 0.8682 rm2 0.5853 Pearson 0.8030 balAcc 0.7655
+[cnn_davis_regB_meank8_s7] epoch  90 |   3.5s | train_mse 0.2407 | test MSE 0.2934 CI 0.8735 rm2 0.6420 Pearson 0.8040 balAcc 0.7589
+[cnn_davis_regB_meank8_s7] epoch  95 |   3.5s | train_mse 0.2232 | test MSE 0.2766 CI 0.8740 rm2 0.6525 Pearson 0.8114 balAcc 0.7553
+[cnn_davis_regB_meank8_s7] epoch 100 |   3.5s | train_mse 0.2122 | test MSE 0.2864 CI 0.8772 rm2 0.6330 Pearson 0.8086 balAcc 0.7539
+
+=== BEST [cnn_davis_regB_meank8_s7] === epoch 85 | MSE 0.2901 | CI 0.8682 | rm2 0.5853
+params 1,832,609 | mean 3.5s/epoch | total 5.9 min
+
+[1;36m[regB-meank][0m training regB pool=meank k=16 seed=7  (tag cnn_davis_regB_meank16_s7, epochs=100)
+=== cnn_davis_regB_meank16_s7 | device=cuda:0 | pool=meank | head_dim=1024 | head_layers=2 | seed=7 | embed_dim=128 ===
+Trainable parameters: 3,012,257
+[cnn_davis_regB_meank16_s7] epoch   5 |   3.5s | train_mse 0.5876 | test MSE 0.5741 CI 0.7881 rm2 0.2971 Pearson 0.5463 balAcc 0.5947
+[cnn_davis_regB_meank16_s7] epoch  10 |   3.5s | train_mse 0.5444 | test MSE 0.5294 CI 0.8019 rm2 0.3376 Pearson 0.5938 balAcc 0.5857
+[cnn_davis_regB_meank16_s7] epoch  15 |   3.5s | train_mse 0.4918 | test MSE 0.4782 CI 0.8183 rm2 0.4007 Pearson 0.6362 balAcc 0.6302
+[cnn_davis_regB_meank16_s7] epoch  20 |   3.5s | train_mse 0.4822 | test MSE 0.4850 CI 0.8257 rm2 0.4371 Pearson 0.6668 balAcc 0.6201
+[cnn_davis_regB_meank16_s7] epoch  25 |   3.5s | train_mse 0.4036 | test MSE 0.4255 CI 0.8394 rm2 0.4889 Pearson 0.7196 balAcc 0.6272
+[cnn_davis_regB_meank16_s7] epoch  30 |   3.5s | train_mse 0.3611 | test MSE 0.3543 CI 0.8531 rm2 0.5544 Pearson 0.7470 balAcc 0.7012
+[cnn_davis_regB_meank16_s7] epoch  35 |   3.5s | train_mse 0.3463 | test MSE 0.3743 CI 0.8593 rm2 0.5572 Pearson 0.7635 balAcc 0.7328
+[cnn_davis_regB_meank16_s7] epoch  40 |   3.5s | train_mse 0.3103 | test MSE 0.3405 CI 0.8626 rm2 0.5628 Pearson 0.7632 balAcc 0.7354
+[cnn_davis_regB_meank16_s7] epoch  45 |   3.5s | train_mse 0.3216 | test MSE 0.3202 CI 0.8642 rm2 0.5873 Pearson 0.7812 balAcc 0.7522
+[cnn_davis_regB_meank16_s7] epoch  50 |   3.5s | train_mse 0.2973 | test MSE 0.3285 CI 0.8659 rm2 0.6107 Pearson 0.7872 balAcc 0.6987
+[cnn_davis_regB_meank16_s7] epoch  55 |   3.5s | train_mse 0.2688 | test MSE 0.2999 CI 0.8696 rm2 0.6002 Pearson 0.7921 balAcc 0.7479
+[cnn_davis_regB_meank16_s7] epoch  60 |   3.5s | train_mse 0.2533 | test MSE 0.3050 CI 0.8677 rm2 0.6216 Pearson 0.7985 balAcc 0.7217
+[cnn_davis_regB_meank16_s7] epoch  65 |   3.5s | train_mse 0.2614 | test MSE 0.2995 CI 0.8721 rm2 0.6363 Pearson 0.8078 balAcc 0.7820
+[cnn_davis_regB_meank16_s7] epoch  70 |   3.5s | train_mse 0.2258 | test MSE 0.2798 CI 0.8756 rm2 0.6367 Pearson 0.8105 balAcc 0.7627
+[cnn_davis_regB_meank16_s7] epoch  75 |   3.5s | train_mse 0.2198 | test MSE 0.2681 CI 0.8781 rm2 0.6468 Pearson 0.8176 balAcc 0.7651
+[cnn_davis_regB_meank16_s7] epoch  80 |   3.5s | train_mse 0.2085 | test MSE 0.2564 CI 0.8784 rm2 0.6560 Pearson 0.8259 balAcc 0.7765
+[cnn_davis_regB_meank16_s7] epoch  85 |   3.5s | train_mse 0.2022 | test MSE 0.2547 CI 0.8789 rm2 0.6714 Pearson 0.8264 balAcc 0.7662
+[cnn_davis_regB_meank16_s7] epoch  90 |   3.5s | train_mse 0.1946 | test MSE 0.2598 CI 0.8824 rm2 0.6565 Pearson 0.8265 balAcc 0.7900
+[cnn_davis_regB_meank16_s7] epoch  95 |   3.5s | train_mse 0.1863 | test MSE 0.2517 CI 0.8805 rm2 0.6716 Pearson 0.8287 balAcc 0.7683
+[cnn_davis_regB_meank16_s7] epoch 100 |   3.5s | train_mse 0.1773 | test MSE 0.2526 CI 0.8809 rm2 0.6596 Pearson 0.8304 balAcc 0.7854
+
+=== BEST [cnn_davis_regB_meank16_s7] === epoch 90 | MSE 0.2598 | CI 0.8824 | rm2 0.6565
+params 3,012,257 | mean 3.5s/epoch | total 5.8 min
+
+[1;36m[regB-meank][0m summary
+
+  baselines:
+  regB max     s7              0.8178
+  regB mean    s7              0.7579
+
+  k-bin average pool (target: >=0.80 floor, >=0.831 stretch):
+  regB meank k=2 s7            0.7492
+  regB meank k=4 s7            0.7574
+  regB meank k=8 s7            0.7655
+  regB meank k=16 s7           0.7900
+
+  MPC payoff (any k): 347K -> 233K secure comparisons (max-pool tree gone).
+  Confirm: python mpc_cost.py --model cnn --dataset davis --drug-channels 16,32,48 \
+    --prot-channels 32,64,96 --prot-dilations 1,2,4 --pool meank --pool-bins <k> \
+    --head-dim 1024 --head-layers 2
+
+[1;36m[regB-meank][0m done -- meank checkpoints in runs/ flow through the MPC tools (bit-exact port,
+
+[1;36m[regB-meank][0m no max-pool DReLUs). See mpc/RETRAIN_REGB.md.

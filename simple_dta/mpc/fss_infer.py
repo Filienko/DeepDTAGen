@@ -241,6 +241,24 @@ class FSSBackend(Backend):
         s1 = (x[1].sum(dim=2) * inv) & MASK
         return self._trunc_by((s0, s1), F2)
 
+    def meank_pool(self, x, bins):
+        # k-bin average pool: mean over each of `bins` adaptive segments of L, then
+        # flatten channel-major -> [B, C*bins] (matches models._pool1d(mode='meank'):
+        # adaptive_avg_pool1d(x,bins).flatten(1)). Each segment is a scaled sum (reuses
+        # mean_pool), so this stays FREE under FSS -- no comparisons, unlike max_pool.
+        s0, s1 = x
+        L = s0.shape[2]
+        segs0, segs1 = [], []
+        for i in range(bins):
+            st = (i * L) // bins
+            en = -(-((i + 1) * L) // bins)               # ceil((i+1)*L/bins), adaptive bound
+            m0, m1 = self.mean_pool((s0[:, :, st:en], s1[:, :, st:en]))   # each [B, C]
+            segs0.append(m0); segs1.append(m1)
+        B = s0.shape[0]
+        o0 = torch.stack(segs0, dim=2).reshape(B, -1) & MASK   # [B, C, bins] -> [B, C*bins]
+        o1 = torch.stack(segs1, dim=2).reshape(B, -1) & MASK
+        return o0, o1
+
     def _sub(self, a, b):
         return ((a[0] - b[0]) & MASK, (a[1] - b[1]) & MASK)
 

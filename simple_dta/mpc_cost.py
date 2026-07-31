@@ -192,9 +192,10 @@ class count_ops:
                 return surviving * (x.shape[red_dim] - 1)
             return 0
 
-        def pool1d(x, mode):  # x: [B, C, L], reduce L (dim 2)
+        def pool1d(x, mode, bins=1):  # x: [B, C, L], reduce L (dim 2)
+            # meank is a scaled sum (adaptive avg pool) -> 0 comparisons, like mean.
             c.maxpool += _pool_cmps(x, mode, red_dim=2)
-            return s["m_pool1d"](x, mode)
+            return s["m_pool1d"](x, mode, bins)
 
         def m_masked_pool(x, pad, mode):  # x: [B, L, D], reduce L (dim 1)
             c.maxpool += _pool_cmps(x, mode, red_dim=1)

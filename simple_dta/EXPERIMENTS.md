@@ -1008,6 +1008,7 @@ a direct `AttnDTA` forward+backward smoke test on a synthetic batch. Launched
 via `setsid nohup bash run_queue.sh jobs_attn4.txt 6 8 & disown` (bumped
 concurrency to 6 parallel jobs x 8 threads = 48 threads total, up from batch
 3's 4x12, since the box was measured near-idle beforehand -- load average
+<<<<<<< HEAD
 3.1 on 48 cores, other users' jobs using ~3 cores total). Results: TODO fill
 in once `runs/queue.driver.log` shows all 14 `DONE`.
 
@@ -1159,3 +1160,92 @@ user's CUDA box.
   DReLU/DCF kernels → likely 1–2 orders faster online); NssMPClib won't help this
   metric (CPU nonlinears). `mpc/orca/regB_cnn.h` + `mpc/run_orca_regB.sh` are the
   Orca benchmark to measure it on the GPU box.
+=======
+3.1 on 48 cores, other users' jobs using ~3 cores total).
+
+### 13.5 Batch 4 results (final, all 15 jobs `DONE` as of 2026-07-12 00:25 UTC)
+
+**Direction 1 -- shrink F (F=1.08M/0.831):**
+
+| job | change from F | params | balAcc |
+|---|---|---|---|
+| F3_uni_head | unilateral `prot2drug` + head 512L1 only (full attn/gcn width kept) | 358K | **0.812** |
+| F4_uni_lean | + attn/gcn-dim 64 | 206K | 0.782 |
+| F1_lean | attn/gcn-dim 64, bilateral | 223K | 0.774 |
+| F2_tiny | attn/gcn-dim 32 | 152K | 0.770 |
+
+F3 wins by a wide margin: 3x smaller than F for -2pp. Narrowing attn/gcn width
+costs much more than going unilateral does -- confirms the head-dominates-
+params finding (13.1): once the head is already cut to 512L1, the next
+cheapest lever is the cross-attention *direction*, not its *width*.
+
+**Direction 2 -- upgrade Config A (267K/0.795):**
+
+| job | idea | params | balAcc |
+|---|---|---|---|
+| A2_leantower | lean-drug/full-protein asymmetry | 248K | 0.788 |
+| A4_crossattn | cross-attn (linear, dim32) instead of concat | 208K | 0.776 |
+| A3_smaller | proj-dim 16, head 1024L1 | 197K | 0.759 |
+| A5_minignn | "mini-F" -- gcn32 + unilateral cross-attn, head 512L1 | 148K | 0.743 |
+
+**None beat Config A.** Every lever that helps at 1M+ params (asymmetric
+towers, cross-attention fusion, graph towers) either hurts or does nothing at
+the ~150-250K budget -- Config A's own compression (large single-layer head,
+plain concat) already sits at this budget class's practical ceiling. Cross-
+attention specifically needs a wider `attn_dim`/`gcn_dim` than 32 to pay for
+itself; A4 (tiny cross-attn) loses to plain concat A2 at a comparable size.
+
+**Direction 3 -- improve E2 (1.1M/0.814), keep graph-awareness:**
+
+| job | config | params | balAcc |
+|---|---|---|---|
+| L1_gine_cross_linear | GINEConv (edges in the message) + cross, linear | 1.12M | **0.815** |
+| E4_gat_noedge_linear | GAT no edge feats, linear | 1.11M | 0.814 |
+| E3_gat_edge_linear | GAT + edge feats, linear (E2's softmax-free twin) | 1.11M | 0.813 |
+| E5_gat_lean | GAT+edge, shrunk + unilateral + linear | 218K | 0.792 |
+| L2_gine_lean | GINE, shrunk + unilateral + linear | 216K | 0.762 |
+| H1L_graphformer1L | raw atoms + 1 self-attn layer, then cross | 2.32M | 0.663 |
+| H2L_graphformer2L | raw atoms + 2 self-attn layers, then cross | 2.85M | 0.545 |
+
+Findings:
+1. **Linear attention matches softmax on the GAT/GINE drug tower.** E3/E4/L1
+   all land 0.813-0.815, indistinguishable from E2's 0.814 softmax version --
+   the softmax-vs-linear gap that's real on the CNN tower (A=0.840 vs
+   D=0.788) essentially vanishes on graph towers. Good news for the MPC port:
+   the most "interesting" (graph-aware, edge-aware) family can go fully
+   linear for free.
+2. **Edge features still don't help GAT** (E4 no-edge=0.814 vs E3 edge=0.813,
+   a tie within noise) -- repeats the C/C2 and E2 pattern from batches 1-3.
+   GATv2's content-based attention keeps capturing whatever hand-coded bond
+   features would add, regardless of softmax/linear.
+3. **GINEConv (edges genuinely summed into the message, not gating an
+   attention weight) is the best result in this whole direction** -- 0.815,
+   edging out both GAT variants and tying E2's original softmax score, while
+   also being fully linear. This is the strongest evidence yet that *how*
+   edge features enter the model matters more than *whether* they're used at
+   all: GAT's gate-an-attention-weight mechanism gets no lift from edges,
+   but GINE's sum-into-the-message mechanism does (however slightly).
+4. **Shrinking direction-3 models costs more than shrinking F did**: E5
+   (218K) drops 2.2pp from E3, L2 (216K) drops 5.3pp from L1 -- both bigger
+   hits than F3's 1.9pp drop from F. Graph+edge towers appear to tolerate
+   compression worse than the plain-GCN tower does.
+5. **The H puzzle is resolved, and the answer is "fragile, not a cliff."**
+   H (0 self-attn layers, raw atoms straight into cross-attention) = 0.826.
+   H1L (1 layer) = 0.663 -- a 16pp drop from adding a *single* self-attention
+   block. H2L (2 layers) = 0.545 -- already indistinguishable from G1's full
+   collapse (4 layers, ~0.50). So the degradation is front-loaded: nearly all
+   of the damage happens between 0 and 1 layers, not gradually across 4. This
+   supports the training-instability reading over a representational one --
+   stacking *any* untrained self-attention block on ~100 unordered atoms with
+   no positional encoding destabilizes optimization almost immediately, it
+   isn't a capacity/depth tradeoff that gradually degrades. Practical
+   takeaway: if using the raw-atom + cross-attention recipe (H's family),
+   zero self-attention layers isn't just cheapest, it's necessary.
+
+**Updated overall leaderboard position:** F3 (358K/0.812) and L1
+(1.12M/0.815) are both new additions to the top tier alongside A (0.840), F
+(0.831), H (0.826), and E2 (0.814) -- L1 is now the best fully-linear,
+graph-and-edge-aware model on the board, and F3 is the best small
+(<400K) linear-attention model, beating Config A's non-attention 267K/0.795
+by 1.7pp at a still-modest size.
+>>>>>>> cbd3e22 (Finalize batch 4 results: shrink-F, CNN-baseline, and edge-aware GNN directions)

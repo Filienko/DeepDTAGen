@@ -62,8 +62,18 @@ class Backend:
         """x: [B, C, L] -> [B, C] (max over L). A log(L) DReLU tournament under FSS."""
         raise NotImplementedError
 
-    def pool(self, x, mode):
-        return self.mean_pool(x) if mode == "mean" else self.max_pool(x)
+    def meank_pool(self, x, bins):
+        """x: [B, C, L] -> [B, C*bins] (average over `bins` contiguous segments,
+        channel-major, matching models._pool1d(mode='meank')). Each segment is a
+        scaled sum, so like mean_pool it is free/linear under FSS (0 comparisons)."""
+        raise NotImplementedError
+
+    def pool(self, x, mode, bins=1):
+        if mode == "mean":
+            return self.mean_pool(x)
+        if mode == "meank":
+            return self.meank_pool(x, bins)
+        return self.max_pool(x)
 
     def concat(self, a, b):
         """concat two [B, D] tensors along dim 1."""
@@ -92,6 +102,9 @@ class ClearBackend(Backend):
     def max_pool(self, x):
         return x.max(dim=2).values
 
+    def meank_pool(self, x, bins):
+        return F.adaptive_avg_pool1d(x, bins).flatten(1)
+
     def concat(self, a, b):
         return torch.cat([a, b], dim=1)
 
@@ -109,10 +122,11 @@ class MPCModel:
         assert cnndta.drug is not None and cnndta.protein is not None, \
             "MPCModel needs the full two-tower model (ablate='none')"
         assert cnndta.proj_dim == 0, "port the proj_dim=0 variant (no bottleneck)"
-        assert cnndta.drug.pool in ("mean", "max") and cnndta.protein.pool == cnndta.drug.pool, (
-            "MPC port supports pool in {mean,max} (same for both towers). mean is free "
-            "under FSS; max is a log(L) DReLU tournament (works, just costlier).")
+        assert cnndta.drug.pool in ("mean", "max", "meank") and cnndta.protein.pool == cnndta.drug.pool, (
+            "MPC port supports pool in {mean,max,meank} (same for both towers). mean and "
+            "meank are free under FSS; max is a log(L) DReLU tournament (works, just costlier).")
         self.pool_mode = cnndta.drug.pool
+        self.pool_bins = getattr(cnndta.drug, "pool_bins", 1)
         cnndta.eval()
         self.drug_vocab = CHARISOSMILEN + 1
         self.prot_vocab = CHARPROTLEN + 1
@@ -129,7 +143,7 @@ class MPCModel:
         x = be.embed(x_onehot, table)          # [B, E, L]
         for w, b in convs:
             x = be.relu(be.conv1d(x, w, b))
-        return be.pool(x, self.pool_mode)       # [B, C]
+        return be.pool(x, self.pool_mode, self.pool_bins)   # [B, C] (or [B, C*bins] for meank)
 
     def forward(self, be, drug_onehot, prot_onehot):
         d = self._tower(be, drug_onehot, self.drug_table, self.drug_convs)
@@ -177,8 +191,8 @@ def load_cnndta(summary_path=None, ckpt_path=None, config=None):
         for k, v in summary.items():
             if k not in ("model", "dataset") and hasattr(args, k):
                 setattr(args, k, v)
-        if args.pool not in ("mean", "max"):
-            raise ValueError(f"checkpoint pool={args.pool!r}; MPC supports mean|max "
+        if args.pool not in ("mean", "max", "meank"):
+            raise ValueError(f"checkpoint pool={args.pool!r}; MPC supports mean|max|meank "
                              "(maxmean not supported).")
         model = train.build_model(args)
     if ckpt_path:
@@ -197,6 +211,7 @@ class MPCReadyNet(torch.nn.Module):
         super().__init__()
         mpc = MPCModel(cnndta)
         self.pool_mode = mpc.pool_mode
+        self.pool_bins = mpc.pool_bins
         self.drug_vocab, self.prot_vocab = mpc.drug_vocab, mpc.prot_vocab
         self.drug_table = torch.nn.Parameter(mpc.drug_table.clone(), requires_grad=False)
         self.prot_table = torch.nn.Parameter(mpc.prot_table.clone(), requires_grad=False)
@@ -221,7 +236,11 @@ class MPCReadyNet(torch.nn.Module):
         x = torch.matmul(x_onehot, table).transpose(1, 2)  # [B,E,L]
         for c in convs:
             x = torch.relu(c(x))
-        return x.mean(dim=2) if self.pool_mode == "mean" else x.max(dim=2).values
+        if self.pool_mode == "mean":
+            return x.mean(dim=2)
+        if self.pool_mode == "meank":
+            return F.adaptive_avg_pool1d(x, self.pool_bins).flatten(1)
+        return x.max(dim=2).values
 
     def forward(self, drug_onehot, prot_onehot):
         d = self._tower(drug_onehot, self.drug_table, self.drug_convs)
