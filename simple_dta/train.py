@@ -188,6 +188,14 @@ def make_parser():
                          "an input on the joint model)")
     ap.add_argument("--prot-dilations", default="",
                     help="CNN: comma list of protein conv dilations, one per layer. e.g. 1,2,4")
+    ap.add_argument("--drug-strides", default="",
+                    help="CNN: comma list of drug conv strides, one per layer. e.g. 1,1,1")
+    ap.add_argument("--prot-strides", default="",
+                    help="CNN: comma list of protein conv strides, one per layer (e.g. 4,4,1). "
+                         "Stride>1 down-samples the sequence inside the existing Conv1d: it "
+                         "costs ZERO secure comparisons yet shrinks both the downstream ReLU "
+                         "count and the global max-pool tournament -- the main MPC lever for "
+                         "keeping max-pool's accuracy at a fraction of its FSS cost.")
     ap.add_argument("--head-dim", type=int, default=1024,
                     help="width of first FC head layer (1024=baseline, 512=reduced)")
     ap.add_argument("--head-layers", type=int, choices=[1, 2], default=2,
@@ -235,7 +243,9 @@ def build_model(args, device=None):
                        prot_kernel=args.prot_kernel,
                        ablate=args.ablate,
                        pool_bins=args.pool_bins,
-                       pool_heads=args.pool_heads).to(device)
+                       pool_heads=args.pool_heads,
+                       drug_strides=_il(args.drug_strides),
+                       prot_strides=_il(args.prot_strides)).to(device)
     elif args.model == "gnn":
         from data import FEATURIZERS
         node_feat_dim = FEATURIZERS[args.node_feat][1]
@@ -356,6 +366,7 @@ def main():
         "proj_dim": args.proj_dim, "drug_channels": args.drug_channels,
         "prot_channels": args.prot_channels, "drug_dilations": args.drug_dilations,
         "prot_dilations": args.prot_dilations,
+        "drug_strides": args.drug_strides, "prot_strides": args.prot_strides,
         "drug_kernel": args.drug_kernel, "prot_kernel": args.prot_kernel,
         "ablate": args.ablate,
         "dropout": args.dropout,

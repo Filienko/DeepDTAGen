@@ -133,14 +133,16 @@ class SmilesCNN(nn.Module):
     """Embedding -> N Conv1d layers -> global pool. Output dim = channels[-1] (x2 if maxmean)."""
 
     def __init__(self, embed_dim=128, num_filters=32, kernel_size=4, pool="max",
-                 channels=None, dilations=None, pool_bins=1, pool_heads=4):
+                 channels=None, dilations=None, pool_bins=1, pool_heads=4, strides=None):
         super().__init__()
         self.pool = pool
         self.pool_bins = pool_bins
         self.embed = nn.Embedding(CHARISOSMILEN + 1, embed_dim, padding_idx=0)
-        channels, dilations, spec = _build_conv_stack(embed_dim, num_filters, channels, dilations)
+        channels, dilations, strides, spec = _build_conv_stack(
+            embed_dim, num_filters, channels, dilations, strides)
+        self.strides = strides
         self.convs = nn.ModuleList(
-            [nn.Conv1d(i, o, kernel_size, dilation=d) for i, o, d in spec])
+            [nn.Conv1d(i, o, kernel_size, dilation=d, stride=s) for i, o, d, s in spec])
         self.attn_pool = LinearAttentionPool(channels[-1], pool_heads) if pool == "attn" else None
         self.out_dim = channels[-1] * _pool_mult(pool, pool_bins)
 
@@ -196,7 +198,8 @@ class CNNDTA(nn.Module):
                  embed_dim=128, dropout=0.1, pool="max", head_dim=1024,
                  head_layers=2, proj_dim=0, drug_channels=None, prot_channels=None,
                  drug_dilations=None, prot_dilations=None,
-                 drug_kernel=4, prot_kernel=8, ablate="none", pool_bins=1, pool_heads=4):
+                 drug_kernel=4, prot_kernel=8, ablate="none", pool_bins=1, pool_heads=4,
+                 drug_strides=None, prot_strides=None):
         super().__init__()
         assert ablate in ("none", "drug", "protein"), f"unknown ablate mode {ablate}"
         self.ablate = ablate
@@ -205,11 +208,11 @@ class CNNDTA(nn.Module):
         self.drug = None if ablate == "drug" else SmilesCNN(
             embed_dim, drug_filters, kernel_size=drug_kernel, pool=pool,
             channels=drug_channels, dilations=drug_dilations, pool_bins=pool_bins,
-            pool_heads=pool_heads)
+            pool_heads=pool_heads, strides=drug_strides)
         self.protein = None if ablate == "protein" else ProteinCNN(
             embed_dim, prot_filters, kernel_size=prot_kernel, pool=pool,
             channels=prot_channels, dilations=prot_dilations, pool_bins=pool_bins,
-            pool_heads=pool_heads)
+            pool_heads=pool_heads, strides=prot_strides)
         self.proj_dim = proj_dim
         if proj_dim:
             # compress each surviving tower to a compact binding embedding before the head
